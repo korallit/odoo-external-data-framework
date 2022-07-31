@@ -284,14 +284,15 @@ class WebscrapeFieldMappingLine(models.Model):
         string="Site",
         required=True,
     )
+    site_id_id = fields.Integer(related="site_id.id")
     type_mapping_line_id = fields.Many2one(
         'webscrape.type.mapping.line',
         ondelete='cascade',
         string="Content type",
         required=True,
     )
-    type_mapping_model_id = fields.Integer(
-        related="type_mapping_line_id.model_id.id",
+    type_mapping_model = fields.Char(
+        related="type_mapping_line_id.model_id.model",
     )
     source_key = fields.Char("Source key", required=True)
     target_field = fields.Many2one(

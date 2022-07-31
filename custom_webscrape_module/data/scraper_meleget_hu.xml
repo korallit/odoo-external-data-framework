@@ -27,6 +27,19 @@
     <!-- Field Mapping -->
 
     <!-- Cron -->
+    <record model="ir.cron" id="webscrape_cron_malaget_hu_process_sitemap">
+        <field name="name">meleget.hu process sitemap</field>
+        <field name="model_id" ref="model_webscrape_site"/>
+        <field name="active" eval="False"/>
+        <field name="interval_type">weeks</field>
+        <field name="interval_number" eval="1"/>
+        <field name="numbercall" eval="-1"/>
+        <field name="code"><![CDATA[
+site = model.search([('base_url', 'like', 'meleget.hu')], limit=1)
+site.process_sitemap()
+]]></field>
+    </record>
+
     <record model="ir.cron" id="webscrape_cron_malaget_hu_scrape_all">
         <field name="name">meleget.hu batch scrape all</field>
         <field name="model_id" ref="model_webscrape_site"/>

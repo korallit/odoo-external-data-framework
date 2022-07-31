@@ -49,10 +49,12 @@
 			    <field name="field_mapping_line_ids">
 				<tree editable="bottom">
 				    <field name="source_key"/>
-				    <field name="type_mapping_line_id"/>
-				    <field name="type_mapping_model_id" invisible="1"/>
+				    <field name="site_id_id" invisible="1"/>
+				    <field name="type_mapping_line_id"
+					   domain="[('site_id', '=', site_id_id)]"/>
+				    <field name="type_mapping_model" invisible="1"/>
 				    <field name="target_field"
-					   domain="[('model_id', '=', type_mapping_model_id)]"/>
+					   domain="[('model', '=', type_mapping_model)]"/>
 				    <field name="is_relation"/>
 				</tree>
 			    </field>
