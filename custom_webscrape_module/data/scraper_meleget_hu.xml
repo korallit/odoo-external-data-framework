@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <!-- Site -->
+    <record model="webscrape.site" id="meleget_hu">
+        <field name="name">meleget.hu</field>
+        <field name="base_url">https://www.meleget.hu</field>
+        <field name="scraper_model_id"
+               ref="custom_webscrape_module.model_webscrape_scraper_meleget_hu"/>
+    </record>
+
+    <!-- Content Type Mapping -->
+    <record model="webscrape.type.mapping.line" id="meleget_hu_product">
+        <field name="site_id" ref="custom_webscrape_module.meleget_hu"/>
+        <field name="name">product</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="source_id_key">sku</field>
+    </record>
+
+    <record model="webscrape.type.mapping.line" id="meleget_hu_category">
+        <field name="site_id" ref="custom_webscrape_module.meleget_hu"/>
+        <field name="name">category</field>
+        <field name="model_id" ref="website_sale.model_product_public_category"/>
+        <field name="source_id_key">href</field>
+    </record>
+
+    <!-- Field Mapping -->
+
+    <!-- Cron -->
+    <record model="ir.cron" id="webscrape_cron_malaget_hu_scrape_all">
+        <field name="name">meleget.hu batch scrape all</field>
+        <field name="model_id" ref="model_webscrape_site"/>
+        <field name="active" eval="False"/>
+        <field name="interval_type">days</field>
+        <field name="interval_number" eval="1"/>
+        <field name="numbercall" eval="-1"/>
+        <field name="code"><![CDATA[
+site = model.search([('base_url', 'like', 'meleget.hu')], limit=1)
+site.batch_scrape(sync=False, prune=False)
+]]></field>
+    </record>
+
+    <record model="ir.cron" id="webscrape_cron_malaget_hu_scrape_categories">
+        <field name="name">meleget.hu batch scrape categories</field>
+        <field name="model_id" ref="model_webscrape_site"/>
+        <field name="active" eval="False"/>
+        <field name="interval_type">days</field>
+        <field name="interval_number" eval="1"/>
+        <field name="numbercall" eval="-1"/>
+        <field name="code"><![CDATA[
+content_type = 'category'
+site = model.search([('base_url', 'like', 'meleget.hu')], limit=1)
+type_mapping_id = model.type_mapping_line_ids.search(
+    [('name', '=', content_type), ('site_id', '=', site.id)],
+    limit=1,
+)
+site.batch_scrape(
+    type_mapping_id=type_mapping_id.id,
+    sync=False, prune=False,
+)
+]]></field>
+    </record>
+
+    <record model="ir.cron" id="webscrape_cron_malaget_hu_scrape_products">
+        <field name="name">meleget.hu batch scrape products</field>
+        <field name="model_id" ref="model_webscrape_site"/>
+        <field name="active" eval="False"/>
+        <field name="interval_type">days</field>
+        <field name="interval_number" eval="1"/>
+        <field name="numbercall" eval="-1"/>
+        <field name="code"><![CDATA[
+content_type = 'product'
+site = model.search([('base_url', 'like', 'meleget.hu')], limit=1)
+type_mapping_id = model.type_mapping_line_ids.search(
+    [('name', '=', content_type), ('site_id', '=', site.id)],
+    limit=1,
+)
+site.batch_scrape(
+    type_mapping_id=type_mapping_id.id,
+    sync=False, prune=False,
+)
+]]></field>
+    </record>
+
+</odoo>

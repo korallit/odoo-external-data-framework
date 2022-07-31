@@ -1,51 +1,70 @@
 # coding: utf-8
 
-from odoo import models, fields
+from datetime import datetime
+
+from odoo import api, fields, models
+from odoo.fields import Command
 
 
-class WebscrapeSite(models.Model):
-    _name = 'webscrape.site'
+class WebscrapePage(models.Model):
+    _name = 'webscrape.page'
+    _description = "Webscraper Pages"
+    _rec_name = 'url'
+    _order = 'url'
 
     url = fields.Char("URL", required=True)
-    name = fields.Char("Name", required=True)
-    level = fields.Integer("Tree level", required=True, default=0)
+    level = fields.Integer("Tree level", default=0)
     changefreq = fields.Char("Change frequency")
     priority = fields.Float("Priority")
     last_mod = fields.Datetime("Last modification time")
     last_scrape = fields.Datetime("Last scrape time")
-    content_type = fields.Char("Content type")
+    type_mapping_line_ids = fields.Many2many(
+        'webscrape.type.mapping.line',
+        string="Content types",
+    )
     relation_ids = fields.One2many(
         'webscrape.relation',
-        inverse_name='site_id',
+        inverse_name='page_id',
         string="Related records",
     )
-    scraper_id = fields.Many2one(
-        'webscrape.scraper',
+    site_id = fields.Many2one(
+        'webscrape.site',
         ondelete='set null',
-        string="Scraper",
+        string="Site",
     )
 
-    def scrape_site(self, sync=False, prune=False):
+    def scrape_page(self, sync=False, prune=False):
         self.ensure_one()
+        scraper = self.env[self.site_id.scraper_model_id.model]
         # TODO: check scraper model method availability
-        dataset = self.scraper_id.scraper_model_id.scrape_site(self.url)
-        if sync:
-            self.sync_related_records(dataset)
-        if prune:
-            self.prune_related_records(dataset)
+        dataset = scraper.scrape_page(
+            self.url,
+            vendor_id=self.site_id.vendor_id.id
+        )
+
+        # find content_types
+        found_content_types = set([
+            data['content_type']
+            for data in dataset if data.get('content_type')
+        ])
+        type_mapping_line_ids = self.site_id.type_mapping_line_ids.filtered(
+            lambda t: t.name in found_content_types
+        )
+        if type_mapping_line_ids:
+            self.type_mapping_line_ids = type_mapping_line_ids
+            if sync:
+                self.sync_related_records(dataset)
+                self.last_scraped = datetime.now()
+            if prune:
+                self.prune_related_records(dataset)
+
         return dataset
 
     def sync_related_records(self, dataset):
         self.ensure_one()
-        type_mapping_lines = self.scraper_id.type_mapping_line_ids
-        field_mapping_lines_all = self.scraper_id.field_mapping_line_ids
+        type_mapping_lines = self.site_id.type_mapping_line_ids
+        field_mapping_lines_all = self.site_id.field_mapping_line_ids
         for data in dataset:
-            # get source id, raise exception if missing
-            try:
-                source_id = data['source_id']
-            except KeyError as e:
-                raise e
-
             # get field mapping and create 'vals' dictionary
             try:
                 type_mapping = type_mapping_lines.filtered(
@@ -62,12 +81,30 @@ class WebscrapeSite(models.Model):
             except KeyError as e:
                 raise e
 
-            vals = {
-                mapping.target_field.name: data.get(mapping.source_key)
-                for mapping in field_mapping_lines
-            }
+            vals = {}
+            for mapping in field_mapping_lines:
+                if mapping.is_relation:
+                    rel_data = data["relations"].get(mapping.source_key)
+                    parent_relation = self.relation_ids.filtered(
+                        lambda r: (
+                            r.source_id == rel_data["source_id"] and
+                            r.type_mapping_id.name == rel_data["content_type"]
+                        )
+                    )
+                    if parent_relation:
+                        related_record = parent_relation[0].related_record
+                        vals.update({
+                            mapping.target_field.name: related_record.id,
+                        })
+
+                else:
+                    vals.update({
+                        mapping.target_field.name:
+                        data["vals"].get(mapping.source_key)
+                    })
 
             # try to find record by source_id
+            source_id = data["vals"].get(type_mapping.source_id_key)
             relation = self.relation_ids.filtered(
                 lambda r: r.source_id == source_id
             )
@@ -77,9 +114,9 @@ class WebscrapeSite(models.Model):
                 record = relation[0].related_record
                 record.write(vals)
             else:
-                record = type_mapping.model_id.create(vals)
+                record = self.env[type_mapping.model_id.model].create(vals)
                 self.relation_ids.create({
-                    "site_id": self.id,
+                    "page_id": self.id,
                     "type_mapping_line_id": type_mapping.id,
                     "related_record": record.id,
                     "source_id": source_id,
@@ -99,11 +136,12 @@ class WebscrapeSite(models.Model):
 
 class WebscrapeRelation(models.Model):
     _name = 'webscrape.relation'
+    _description = "Webscraper Page/Object Relations"
 
-    site_id = fields.Many2one(
-        'webscrape.site',
+    page_id = fields.Many2one(
+        'webscrape.page',
         ondelete='cascade',
-        string="Site",
+        string="Page",
         required=True,
     )
     type_mapping_line_id = fields.Many2one(
@@ -113,7 +151,7 @@ class WebscrapeRelation(models.Model):
         required=True,
     )
     related_model = fields.Char(
-        related='type_mapping_line_id.model_id._name',
+        related='type_mapping_line_id.model_id.model',
         store=True,
     )
     related_record = fields.Many2oneReference(
@@ -130,25 +168,26 @@ class WebscrapeRelation(models.Model):
     priority = fields.Integer("Priority", default=100)
 
 
-class WebscrapeScraper(models.Model):
-    _name = 'webscrape.scraper'
+class WebscrapeSite(models.Model):
+    _name = 'webscrape.site'
+    _description = "Webscraper Sites"
 
     name = fields.Char(required=True)
     base_url = fields.Char("Base URL", required=True)
     scraper_model_id = fields.Many2one(
-        'ir.model.model',
+        'ir.model',
         ondelete='cascade',
         string="Scraper model",
         required=True,
     )
     field_mapping_line_ids = fields.One2many(
         'webscrape.field.mapping.line',
-        inverse_name='scraper_id',
+        inverse_name='site_id',
         string="Mapping line",
     )
     type_mapping_line_ids = fields.One2many(
         'webscrape.type.mapping.line',
-        inverse_name='scraper_id',
+        inverse_name='site_id',
         string="Content type",
     )
     vendor_id = fields.Many2one(
@@ -157,52 +196,107 @@ class WebscrapeScraper(models.Model):
         string="Vendor",
     )
     batch_size = fields.Integer("Batch size", default=10)
+    last_fetch = fields.Datetime("Last fetched")
 
     def process_sitemap(self):
         self.ensure_one()
+        scraper = self.env[self.scraper_model_id.model]
         # TODO: check scraper model method availability
-        return self.scraper_model_id.process_sitemap(
+        sitemap = scraper.process_sitemap(
             base_url=self.base_url,
-            scraper_id=self.id,
+            site_id=self.id,
+            not_before=self.last_fetch,
         )
+        if not self.last_fetch:
+            pages = self.env['webscrape.page'].create(sitemap)
+            self.last_fetch = datetime.now()
+            return sitemap, pages.ids
+
+        page_ids = []
+        for page_data in sitemap:
+            page = self.env['webscrape.page'].search(
+                [('url', '=', page_data['url'])],
+                limit=1,
+            )
+            if page:
+                if page.write(page_data):
+                    page_ids.append(page.id)
+            else:
+                page_ids.append(page.create(page_data).id)
+        return sitemap, page_ids
+
+    def batch_scrape(self, type_mapping_id=False, sync=False, prune=False):
+        domain = [('site_id', '=', self.id)]
+        if type_mapping_id:
+            domain.append(('type_mapping_line_ids', '=', type_mapping_id))
+
+        scrape_res = []
+        pages = env['webscrape.page'].search(domain).filtered(
+            lambda p:
+            not p.last_scrape or not p.last_mod or p.last_scrape < p.last_mod
+        )
+        i = 0
+        for page in pages:
+            if i == self.batch_size:
+                return scrape_res
+            # TODO: log info
+            scrape_res.append(page.scrape_page(sync=sync, prune=prune))
+            i += 1
 
 
 class WebscrapeTypeMappingLine(models.Model):
     _name = 'webscrape.type.mapping.line'
+    _description = "Webscraper Content Types"
 
     name = fields.Char(required=True)
     model_id = fields.Many2one(
-        'ir.model.model',
+        'ir.model',
         ondelete='cascade',
         string="Model",
         required=True,
     )
-    scraper_id = fields.Many2one(
-        'webscrape.scraper',
+    site_id = fields.Many2one(
+        'webscrape.site',
         ondelete='cascade',
-        string="Scraper",
+        string="Site",
         required=True,
     )
+    source_id_key = fields.Char(
+        "Source ID key",
+        required=True,
+    )
+
+    def batch_scrape(self, sync=False, prune=False):
+        return self.site_id.batch_scrape(
+            type_mapping_id=self.id,
+            sync=sync, prune=prune,
+        )
 
 
 class WebscrapeFieldMappingLine(models.Model):
     _name = 'webscrape.field.mapping.line'
+    _description = "Webscraper Field Mapping Line"
+    _rec_name = 'source_key'
 
-    scraper_id = fields.Many2one(
-        'webscrape.scraper',
+    site_id = fields.Many2one(
+        'webscrape.site',
         ondelete='cascade',
-        string="Scraper",
-        required=True,
-    )
-    source_key = fields.Char("Source key", required=True)
-    target_field = fields.Many2one(
-        'ir.model.field',
-        ondelete='set null',
-        string="Target field",
+        string="Site",
         required=True,
     )
     type_mapping_line_id = fields.Many2one(
         'webscrape.type.mapping.line',
-        ondelete='set null',
+        ondelete='cascade',
         string="Content type",
+        required=True,
     )
+    type_mapping_model_id = fields.Integer(
+        related="type_mapping_line_id.model_id.id",
+    )
+    source_key = fields.Char("Source key", required=True)
+    target_field = fields.Many2one(
+        'ir.model.fields',
+        ondelete='set null',
+        string="Target field",
+    )
+    is_relation = fields.Boolean("Relational")

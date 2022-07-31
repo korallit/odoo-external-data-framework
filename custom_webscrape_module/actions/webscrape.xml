@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <!-- Server Actions -->
+    <record model="ir.actions.server" id="webscrape_action_process_sitemap">
+	<field name="name">Process Sitemap</field>
+	<field name="model_id" ref="model_webscrape_site"/>
+	<field name="binding_model_id" ref="model_webscrape_site"/>
+	<field name="binding_view_types">form</field>
+	<field name="state">code</field>
+	<field name="code">
+	    record.process_sitemap()
+	</field>
+    </record>
+
+    <record model="ir.actions.server" id="webscrape_action_batch_scrape">
+	<field name="name">Batch Scrape</field>
+	<field name="model_id" ref="model_webscrape_site"/>
+	<field name="binding_model_id" ref="model_webscrape_site"/>
+	<field name="binding_view_types">form</field>
+	<field name="state">code</field>
+	<field name="code">
+	    record.batch_scrape(sync=False, prune=False)
+	</field>
+    </record>
+
+    <record model="ir.actions.server" id="webscrape_action_visit_page">
+	<field name="name">Visit Page</field>
+	<field name="model_id" ref="model_webscrape_page"/>
+	<field name="binding_model_id" ref="model_webscrape_page"/>
+	<field name="binding_view_types">form</field>
+	<field name="state">code</field>
+	<field name="code">
+	    action = {
+		"type": "ir.actions.act_url",
+		"url": record.url,
+	    }
+	</field>
+    </record>
+
+    <record model="ir.actions.server" id="webscrape_action_scrape_page">
+	<field name="name">Scrape Page</field>
+	<field name="model_id" ref="model_webscrape_page"/>
+	<field name="binding_model_id" ref="model_webscrape_page"/>
+	<field name="binding_view_types">form</field>
+	<field name="state">code</field>
+	<field name="code">
+	    record.scrape_page(sync=False, prune=False)
+	</field>
+    </record>
+
+    <record model="ir.actions.server" id="webscrape_action_scrape_page_multi">
+	<field name="name">Scrape Pages</field>
+	<field name="model_id" ref="model_webscrape_page"/>
+	<field name="binding_model_id" ref="model_webscrape_page"/>
+	<field name="binding_view_types">list</field>
+	<field name="state">code</field>
+	<field name="code">
+	    [page.scrape_page(sync=False, prune=False) for page in records]
+	</field>
+    </record>
+
+</odoo>

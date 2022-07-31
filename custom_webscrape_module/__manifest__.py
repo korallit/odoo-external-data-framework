@@ -27,6 +27,9 @@
         'security/ir.model.access.csv',
         'views/views.xml',
         'views/templates.xml',
+        'views/webscrape.xml',
+        'actions/webscrape.xml',
+        'data/scraper_meleget_hu.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

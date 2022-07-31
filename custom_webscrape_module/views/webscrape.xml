@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <!-- Views -->
+    <record id="webscrape_site_list_view" model="ir.ui.view">
+	<field name="name">Webscrape sites</field>
+	<field name="model">webscrape.site</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="name"/>
+		<field name="base_url"/>
+		<field name="scraper_model_id" string="Scraper"/>
+		<field name="vendor_id"/>
+		<field name="batch_size"/>
+		<field name="last_fetch"/>
+	    </tree>
+	</field>
+    </record>
+
+    <record id="webscrape_site_form_view" model="ir.ui.view">
+	<field name="name">Webscrape site details</field>
+	<field name="model">webscrape.site</field>
+	<field name="arch" type="xml">
+	    <form>
+		<header>
+		    <field name="name" widget="statusbar"/>
+		</header>
+		<sheet>
+		    <group>
+			<field name="base_url"/>
+			<field name="scraper_model_id" string="Scraper"/>
+		    </group>
+		    <group>
+			<field name="vendor_id"/>
+			<field name="batch_size"/>
+			<field name="last_fetch"/>
+		    </group>
+		    <notebook>
+			<page string="Content types">
+			    <field name="type_mapping_line_ids">
+				<tree>
+				    <field name="name"/>
+				    <field name="model_id"/>
+				    <field name="source_id_key"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Field mapping">
+			    <field name="field_mapping_line_ids">
+				<tree editable="bottom">
+				    <field name="source_key"/>
+				    <field name="type_mapping_line_id"/>
+				    <field name="type_mapping_model_id" invisible="1"/>
+				    <field name="target_field"
+					   domain="[('model_id', '=', type_mapping_model_id)]"/>
+				    <field name="is_relation"/>
+				</tree>
+			    </field>
+			</page>
+		    </notebook>
+		</sheet>
+	    </form>
+	</field>
+    </record>
+
+    <record id="webscrape_page_list_view" model="ir.ui.view">
+	<field name="name">Webscrape pages</field>
+	<field name="model">webscrape.page</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="url"/>
+		<field name="last_mod"/>
+		<field name="last_scrape"/>
+	    </tree>
+	</field>
+    </record>
+
+    <record id="webscrape_page_form_view" model="ir.ui.view">
+	<field name="name">Webscrape page details</field>
+	<field name="model">webscrape.page</field>
+	<field name="arch" type="xml">
+	    <form>
+		<header>
+		    <field name="url" widget="statusbar"/>
+		</header>
+		<sheet>
+		    <group>
+			<field name="site_id"/>
+			<field name="priority"/>
+		    </group>
+		    <group>
+			<field name="changefreq"/>
+			<field name="last_mod"/>
+			<field name="last_scrape"/>
+		    </group>
+		    <notebook>
+			<page string="Content types">
+			    <field name="type_mapping_line_ids">
+				<tree>
+				    <field name="name"/>
+				    <field name="model_id"/>
+				    <field name="source_id_key"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Related objects">
+			    <field name="relation_ids">
+				<tree>
+				    <field name="related_record"/>
+				    <field name="source_id"/>
+				    <field name="priority"/>
+				</tree>
+			    </field>
+			</page>
+		    </notebook>
+		</sheet>
+	    </form>
+	</field>
+    </record>
+
+    <!-- Window actions -->
+    <record id="webscrape_site_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Site</field>
+	<field name="res_model">webscrape.site</field>
+    </record>
+
+    <record id="webscrape_page_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Page</field>
+	<field name="res_model">webscrape.page</field>
+    </record>
+
+    <!-- Manus -->
+    <menuitem id="webscrape_menu_parent"
+	      name="Webscrape"
+	      parent="base.menu_administration"/>
+	      
+    <menuitem id="webscrape_menu_sites"
+	      name="Sites"
+	      parent="webscrape_menu_parent"
+	      action="webscrape_site_action_window"/>
+	      
+    <menuitem id="webscrape_menu_pages"
+	      name="Pages"
+	      parent="webscrape_menu_parent"
+	      action="webscrape_page_action_window"/>
+
+</odoo>
