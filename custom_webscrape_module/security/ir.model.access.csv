@@ -1,7 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_odoo_update_product_price,update_product_price,model_update_product_price,base.group_user,1,1,1,1
 access_webscrape_field_mapping_line,webscrape_field_mapping_line,model_webscrape_field_mapping_line,base.group_user,1,1,1,1
-access_webscrape_relation,webscrape_relation,model_webscrape_relation,base.group_user,1,1,1,1
+access_webscrape_object,webscrape_object,model_webscrape_object,base.group_user,1,1,1,1
 access_webscrape_site,webscrape_site,model_webscrape_site,base.group_user,1,1,1,1
 access_webscrape_page,webscrape_page,model_webscrape_page,base.group_user,1,1,1,1
 access_webscrape_type_mapping_line,webscrape_type_mapping_line,model_webscrape_type_mapping_line,base.group_user,1,1,1,1

@@ -20,7 +20,7 @@
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
 	<field name="code">
-	    record.batch_scrape(sync=False, prune=False)
+	    record.batch_scrape(sync=True, prune=False)
 	</field>
     </record>
 
@@ -45,7 +45,7 @@
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
 	<field name="code">
-	    record.scrape_page(sync=False, prune=False)
+	    record.scrape_page(sync=True, prune=False)
 	</field>
     </record>
 
@@ -56,7 +56,7 @@
 	<field name="binding_view_types">list</field>
 	<field name="state">code</field>
 	<field name="code">
-	    [page.scrape_page(sync=False, prune=False) for page in records]
+	    [page.scrape_page(sync=True, prune=False) for page in records]
 	</field>
     </record>
 
