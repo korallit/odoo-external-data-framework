@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <odoo>
+    <!-- Window actions -->
+    <record id="webscrape_site_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Site</field>
+	<field name="res_model">webscrape.site</field>
+    </record>
+
+    <record id="webscrape_type_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Type Mapping</field>
+	<field name="res_model">webscrape.type.mapping.line</field>
+    </record>
+
+    <record id="webscrape_page_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Page</field>
+	<field name="res_model">webscrape.page</field>
+    </record>
+
+    <record id="webscrape_object_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Object</field>
+	<field name="res_model">webscrape.object</field>
+    </record>
+
+    <record id="webscrape_rule_action_window" model="ir.actions.act_window">
+	<field name="name">Webscrape Rule</field>
+	<field name="res_model">webscrape.rule</field>
+    </record>
+
     <!-- Views -->
     <record id="webscrape_site_list_view" model="ir.ui.view">
 	<field name="name">Webscrape sites</field>
@@ -22,11 +48,9 @@
 	<field name="model">webscrape.site</field>
 	<field name="arch" type="xml">
 	    <form>
-		<header>
-		    <field name="name" widget="statusbar"/>
-		</header>
 		<sheet>
 		    <group>
+			<field name="name"/>
 			<field name="base_url"/>
 			<field name="scraper_model_id" string="Scraper"/>
 		    </group>
@@ -69,7 +93,28 @@
 			    <field name="target_field"
 				   domain="[('model', '=', target_model)]"
 				   />
-			    <field name="is_relation"/>
+			</tree>
+		    </field>
+		    <separator string="Pre write rules"/>
+		    <field name="rule_ids" domain="[('pre_post', '=', 'pre')]">
+			<tree>
+			    <field name="sequence" widget="handle"/>
+			    <field name="name"/>
+			    <field name="key"/>
+			    <field name="operation" widget="selection"/>
+			    <field name="is_default"/>
+			    <field name="bypass"/>
+			</tree>
+		    </field>
+		    <separator string="Post write rules"/>
+		    <field name="rule_ids" domain="[('pre_post', '=', 'post')]">
+			<tree>
+			    <field name="sequence" widget="handle"/>
+			    <field name="name"/>
+			    <field name="key"/>
+			    <field name="operation" widget="selection"/>
+			    <field name="is_default"/>
+			    <field name="bypass"/>
 			</tree>
 		    </field>
 		</sheet>
@@ -94,11 +139,9 @@
 	<field name="model">webscrape.page</field>
 	<field name="arch" type="xml">
 	    <form>
-		<header>
-		    <field name="url" widget="statusbar"/>
-		</header>
 		<sheet>
 		    <group>
+			<field name="url"/>
 			<field name="site_id"/>
 			<field name="priority"/>
 		    </group>
@@ -121,15 +164,45 @@
 	</field>
     </record>
 
-    <!-- Window actions -->
-    <record id="webscrape_site_action_window" model="ir.actions.act_window">
-	<field name="name">Webscrape Site</field>
-	<field name="res_model">webscrape.site</field>
+    <record id="webscrape_object_list_view" model="ir.ui.view">
+	<field name="name">Webscrape Objects</field>
+	<field name="model">webscrape.object</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="name"/>
+		<field name="source_id"/>
+		<field name="model_model"/>
+	    </tree>
+	</field>
     </record>
 
-    <record id="webscrape_page_action_window" model="ir.actions.act_window">
-	<field name="name">Webscrape Page</field>
-	<field name="res_model">webscrape.page</field>
+    <record id="webscrape_rule_form_view" model="ir.ui.view">
+	<field name="name">Webscrape Process Rule</field>
+	<field name="model">webscrape.rule</field>
+	<field name="arch" type="xml">
+	    <form>
+		<sheet>
+		    <group>
+			<field name="name"/>
+			<field name="pre_post"/>
+			<field name="key"/>
+			<field name="bypass"/>
+		    </group>
+		    <group>
+			<field name="type_mapping_line_id"/>
+			<field name="object_id"/>
+		    </group>
+		    <separator string="Operations"/>
+		    <group>
+			<field name="is_default"/>
+			<field name="operation" widget="selection"/>
+			<field name="param1" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="param2" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="param3" style="font-family: monospace;" class="bg-dark text-light"/>
+		    </group>
+		</sheet>
+	    </form>
+	</field>
     </record>
 
     <!-- Manus -->
@@ -146,5 +219,10 @@
 	      name="Pages"
 	      parent="webscrape_menu_parent"
 	      action="webscrape_page_action_window"/>
+
+    <menuitem id="webscrape_menu_objects"
+	      name="Objects"
+	      parent="webscrape_menu_parent"
+	      action="webscrape_object_action_window"/>
 
 </odoo>

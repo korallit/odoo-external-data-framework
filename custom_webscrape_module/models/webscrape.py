@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import re
 from datetime import datetime
 
 from odoo import api, fields, models
@@ -103,35 +104,30 @@ class WebscrapeTypeMappingLine(models.Model):
         inverse_name='type_mapping_line_id',
         string="Field mapping line",
     )
+    rule_ids = fields.One2many(
+        'webscrape.rule',
+        inverse_name='type_mapping_line_id',
+        string="Rules",
+    )
 
-    def process_values(self, data, page_id):
+    def process_values(self, data):
         self.ensure_one()
-        page = self.env['webscrape.page'].browse(page_id)
-        if not page.exists():
-            raise ValueError("Invalid page ID: %s" % page_id)
-
         vals = {}
         for mapping in self.field_mapping_line_ids:
-            if mapping.is_relation:
-                rel_data = data["relations"].get(mapping.source_key)
-                parent_object = self.env['webscrape.object'].search([
-                    ('page_ids', '=', [page_id]),
-                    ('type_mapping_line_ids', '=', [self.id]),
-                    ('source_id', '=', rel_data["source_id"]),
-                ], limit=1)
-                if parent_object:
-                    related_record = parent_object.related_record
-                    vals.update({
-                        mapping.target_field.name: related_record.id,
-                    })
+            key = mapping.target_field.name
+            value = data["vals"].get(mapping.source_key)
+            if mapping.target_field.ttype == 'binary':
+                value = self._fetch_binary_value(value)
+            vals.update({key: value})
 
-            else:
-                key = mapping.target_field.name
-                value = data["vals"].get(mapping.source_key)
-                if mapping.target_field.ttype == 'binary':
-                    value = self._fetch_binary_value(value)
-                vals.update({key: value})
+        # TODO: pre process type rules
         return vals
+
+    def sanitize_values(self, vals):
+        # TODO: drop unrelevant items
+        # TODO: check required fields
+        # TODO: check recordset values, get ids/id
+        return True
 
     @api.model
     def _fetch_binary_value(self, url):
@@ -157,7 +153,6 @@ class WebscrapeFieldMappingLine(models.Model):
         string="Target field",
         required=True,
     )
-    is_relation = fields.Boolean("Relational")
 
     @api.depends(
         'type_mapping_line_id',
@@ -267,8 +262,7 @@ class WebscrapePage(models.Model):
                 type_mapping = type_mapping[0]
             except KeyError as e:
                 raise e
-
-            vals = type_mapping.process_values(data, self.id)
+            vals = type_mapping.process_values(data)
 
             # try to find record by source_id
             source_id = data["vals"].get(type_mapping.source_id_key)
@@ -278,11 +272,13 @@ class WebscrapePage(models.Model):
 
             # update/create record
             if object_relation:
+                # TODO: pre process object rules
+                # TODO: sanitize values
                 record_id = object_relation[0].related_record
                 record_model = object_relation[0].model_model
                 record = self.env[record_model].browse(record_id)
                 record.write(vals)
-            else:
+            else:  # TODO: elif sanitize vals
                 record = self.env[type_mapping.model_id.model].create(vals)
                 self.object_ids = [Command.create({
                     "name": record.name if record.name else source_id,
@@ -292,6 +288,8 @@ class WebscrapePage(models.Model):
                     "type_mapping_line_ids": [Command.link(type_mapping.id)],
                     "page_ids": [Command.link(self.id)],
                 })]
+
+            # TODO: post process type and object rules on record
 
 
 class WebscrapeObject(models.Model):
@@ -312,6 +310,7 @@ class WebscrapeObject(models.Model):
         required=True,
     )
     model_model = fields.Char(
+        string="Model",
         related='model_id.model',
         store=True,
     )
@@ -329,3 +328,157 @@ class WebscrapeObject(models.Model):
         string="Related pages",
     )
     priority = fields.Integer("Priority", default=100)
+    rule_ids = fields.One2many(
+        'webscrape.rule',
+        inverse_name='object_id',
+        string="Rules",
+    )
+
+
+class WebscrapeRule(models.Model):
+    _name = 'webscrape.rule'
+    _description = "Webscrape processing rules"
+    _order = 'sequence'
+
+    name = fields.Char(required=True)
+    sequence = fields.Integer(
+        required=True,
+        default=1,
+    )
+    key = fields.Char(
+        "Key/Field",
+        required=True,
+    )
+    pre_post = fields.Selection(
+        string="Pre/Post",
+        selection=[('pre', 'pre'), ('post', 'post')],
+        default='pre',
+    )
+    operation = fields.Selection(
+        string="Operation",
+        selection=[
+            ('clear', "clear"),
+            ('replace', "regexp replace(pattern[, repl, count])"),
+            ('lambda', "lambda"),
+            ('orm_ref', "ORM external ID"),
+            ('orm_search', "ORM search(model, domain, limit)"),
+            ('orm_records', "ORM records(filtered, mapped)"),
+        ],
+        default='default',
+        required=True,
+    )
+    param1 = fields.Char()
+    param2 = fields.Char()
+    param3 = fields.Char()
+    is_default = fields.Boolean(
+        "Default",
+        help="Applied only when value not found."
+    )
+    bypass = fields.Boolean()
+    type_mapping_line_id = fields.Many2one(
+        'webscrape.type.mapping.line',
+        ondelete='set null',
+        string="Type mapping",
+    )
+    object_id = fields.Many2one(
+        'webscrape.object',
+        ondelete='set null',
+        string="Scraped object",
+    )
+
+    def process_rule(self, data, vals=False):
+        if isinstance(data, dict):
+            value = data.get(self.key)
+            if not vals:
+                vals = data.copy()
+        elif isinstance(data, models.Model) and hasattr(data, self.key):
+            value = data[self.key]
+            if not vals:
+                vals = {}
+        else:
+            value = False
+
+        if self.operation == 'exclude':
+            if self.key in vals.keys():
+                vals.pop(self.key)
+
+        if value and self.is_default:
+            return vals
+
+        if self.operation == 'clear':
+            value = False
+        elif self.operation == 'replace':
+            result = self._regexp_replace(value, vals)
+            if result:
+                value = result
+        elif self.operation == 'lambda' and self.param1:
+            f = self._get_lambda(self.param1, vals)
+            if f:
+                value = f(value)
+        elif self.operation == 'orm_ref' and self.param1:
+            record = self.env.ref(self.param1)
+            if record:
+                value = record.id
+        elif self.operation == 'orm_search':
+            records = self._orm_search(vals)
+            if not isinstance(records, type(None)):
+                value = records
+        elif self.operation == 'orm_records':
+            records = self._orm_filter_map(value, vals)
+            if not isinstance(records, type(None)):
+                value = records
+
+        if isinstance(data, dict):
+            vals[self.key] = value
+        elif isinstance(data, models.Model) and hasattr(data, self.key):
+            data[self.key] = value
+
+        return vals
+
+    def _regexp_replace(self, value, vals):
+        if not self.param1 or not value:
+            return False
+        pattern = re.compile(self.param1) if self.param1 else '.*'
+        repl = self.param2.format(**vals) if self.param2 else ''
+        count = int(self.param3)
+        return re.sub(pattern, repl, value, count=count)
+
+    def _orm_search(self, vals):
+        if self.env['ir.model'].search([('model', '=', self.param1)]):
+            model = self.env[self.param1]
+        else:
+            return None
+        domain = []
+        domain_match = (
+            re.search(r'\[.*\]', self.param2.format(**vals)) if self.param2
+            else False
+        )
+        if domain_match:
+            domain_list = eval(domain_match.group())
+            if isinstance(domain_list, list):
+                domain = domain_list
+        limit = int(self.param3) if self.param3 else None
+        return model.search(domain, limit=limit)
+
+    def _orm_filter_map(self, records, vals):
+        if isinstance(records, models.Model):
+            f_filter = self._get_lambda(self.param1, vals)
+            f_map = self._get_lambda(self.param2, vals)
+            if f_filter:
+                records = records.filtered(f_filter)
+            if f_map:
+                records = records.mapped(f_map)
+            return records
+        else:
+            return None
+
+    @api.model
+    def _get_lambda(self, lambda_str, vals={}):
+        if not isinstance(lambda_str, str):
+            return False
+        match = re.search(r'lambda [a-z]+:.*', lambda_str.format(**vals))
+        if match:
+            f = eval(match.group())
+            is_callable = callable(f)
+            return f if is_callable else is_callable
+        return False
