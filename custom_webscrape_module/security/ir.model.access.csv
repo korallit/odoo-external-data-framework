@@ -5,3 +5,4 @@ access_webscrape_field_mapping_line,webscrape_field_mapping_line,model_webscrape
 access_webscrape_page,webscrape_page,model_webscrape_page,base.group_user,1,1,1,1
 access_webscrape_object,webscrape_object,model_webscrape_object,base.group_user,1,1,1,1
 access_webscrape_rule,webscrape_rule,model_webscrape_rule,base.group_user,1,1,1,1
+access_webscrape_meleget_hu,webscrape_meleget_hu,model_webscrape_scraper_meleget_hu,base.group_user,1,1,1,1

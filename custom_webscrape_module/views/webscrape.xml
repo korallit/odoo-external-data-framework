@@ -35,8 +35,7 @@
 	    <tree>
 		<field name="name"/>
 		<field name="base_url"/>
-		<field name="scraper_model_id" string="Scraper"/>
-		<field name="vendor_id"/>
+		<field name="scraper_id"/>
 		<field name="batch_size"/>
 		<field name="last_fetch"/>
 	    </tree>
@@ -52,16 +51,16 @@
 		    <group>
 			<field name="name"/>
 			<field name="base_url"/>
-			<field name="scraper_model_id" string="Scraper"/>
+			<field name="scraper_id"/>
 		    </group>
 		    <group>
-			<field name="vendor_id"/>
 			<field name="batch_size"/>
 			<field name="last_fetch"/>
 		    </group>
 		    <separator string="Content types"/>
 		    <field name="type_mapping_line_ids">
 			<tree>
+			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
 			    <field name="content_type"/>
 			    <field name="model_id"/>
@@ -102,8 +101,7 @@
 			    <field name="name"/>
 			    <field name="key"/>
 			    <field name="operation" widget="selection"/>
-			    <field name="is_default"/>
-			    <field name="bypass"/>
+			    <field name="condition"/>
 			</tree>
 		    </field>
 		    <separator string="Post write rules"/>
@@ -113,8 +111,7 @@
 			    <field name="name"/>
 			    <field name="key"/>
 			    <field name="operation" widget="selection"/>
-			    <field name="is_default"/>
-			    <field name="bypass"/>
+			    <field name="condition"/>
 			</tree>
 		    </field>
 		</sheet>
@@ -186,7 +183,6 @@
 			<field name="name"/>
 			<field name="pre_post"/>
 			<field name="key"/>
-			<field name="bypass"/>
 		    </group>
 		    <group>
 			<field name="type_mapping_line_id"/>
@@ -194,11 +190,30 @@
 		    </group>
 		    <separator string="Operations"/>
 		    <group>
-			<field name="is_default"/>
 			<field name="operation" widget="selection"/>
-			<field name="param1" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="param2" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="param3" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="operation_help" widget="selection"/>
+			<field name="condition" style="font-family: monospace;" class="bg-dark text-light"/>
+		    </group>
+		    <group attrs="{'invisible': [('operation', '!=', 'replace')]}">
+			<field name="sub_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="sub_repl" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="sub_count"/>
+		    </group>
+		    <group attrs="{'invisible': [('operation', '!=', 'lambda')]}">
+			<field name="lambda_str"
+			       style="font-family: monospace;" class="bg-dark text-light"/>
+		    </group>
+		    <group attrs="{'invisible': [('operation', '!=', 'orm_ref')]}">
+			<field name="orm_ref"
+			       style="font-family: monospace;" class="bg-dark text-light"/>
+		    </group>
+		    <group attrs="{'invisible': [('operation', '!=', 'orm_expr')]}">
+			<field name="orm_model"/>
+			<field name="orm_domain" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="orm_limit"/>
+			<field name="orm_filter" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="orm_map" style="font-family: monospace;" class="bg-dark text-light"/>
+			<field name="orm_field" style="font-family: monospace;" class="bg-dark text-light"/>
 		    </group>
 		</sheet>
 	    </form>
