@@ -10,6 +10,7 @@
     <record id="webscrape_type_action_window" model="ir.actions.act_window">
 	<field name="name">Webscrape Type Mapping</field>
 	<field name="res_model">webscrape.type.mapping.line</field>
+	<field name="context">{'default_res_id': active_id}</field>
     </record>
 
     <record id="webscrape_page_action_window" model="ir.actions.act_window">
@@ -34,8 +35,6 @@
 	<field name="arch" type="xml">
 	    <tree>
 		<field name="name"/>
-		<field name="base_url"/>
-		<field name="scraper_id"/>
 		<field name="batch_size"/>
 		<field name="last_fetch"/>
 	    </tree>
@@ -50,7 +49,6 @@
 		<sheet>
 		    <group>
 			<field name="name"/>
-			<field name="base_url"/>
 			<field name="scraper_id"/>
 		    </group>
 		    <group>
@@ -59,9 +57,12 @@
 		    </group>
 		    <separator string="Content types"/>
 		    <field name="type_mapping_line_ids">
-			<tree>
+			<tree editable="bottom">
 			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
+			    <button string="open" type="object"
+				    name="button_details"
+				    />
 			    <field name="content_type"/>
 			    <field name="model_id"/>
 			    <field name="source_id_key"/>
@@ -95,7 +96,7 @@
 			</tree>
 		    </field>
 		    <separator string="Pre write rules"/>
-		    <field name="rule_ids" domain="[('pre_post', '=', 'pre')]">
+		    <field name="rule_ids_pre">
 			<tree>
 			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
@@ -105,7 +106,7 @@
 			</tree>
 		    </field>
 		    <separator string="Post write rules"/>
-		    <field name="rule_ids" domain="[('pre_post', '=', 'post')]">
+		    <field name="rule_ids_post">
 			<tree>
 			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
@@ -123,10 +124,12 @@
 	<field name="name">Webscrape pages</field>
 	<field name="model">webscrape.page</field>
 	<field name="arch" type="xml">
-	    <tree>
+	    <tree decoration-danger="notes">
 		<field name="url"/>
 		<field name="last_mod"/>
 		<field name="last_scrape"/>
+		<field name="skip"/>
+		<field name="notes" invisible="1"/>
 	    </tree>
 	</field>
     </record>
@@ -141,12 +144,15 @@
 			<field name="url"/>
 			<field name="site_id"/>
 			<field name="priority"/>
+			<field name="skip"/>
 		    </group>
 		    <group>
 			<field name="changefreq"/>
 			<field name="last_mod"/>
 			<field name="last_scrape"/>
 		    </group>
+		    <separator string="Notes"/>
+		    <field name="notes"/>
 		    <separator string="Related objects"/>
 		    <field name="object_ids">
 			<tree>
@@ -170,6 +176,62 @@
 		<field name="source_id"/>
 		<field name="model_model"/>
 	    </tree>
+	</field>
+    </record>
+
+    <record id="webscrape_object_form_view" model="ir.ui.view">
+	<field name="name">Webscrape Objects</field>
+	<field name="model">webscrape.object</field>
+	<field name="arch" type="xml">
+	    <form>
+		<group>
+		    <field name="name"/>
+		    <field name="source_id"/>
+		    <field name="model_id"/>
+		    <field name="related_record"/>
+		</group>
+		<notebook>
+		    <page string="Type mappings">
+			<field name="type_mapping_line_ids">
+			    <tree>
+				<field name="name"/>
+				<field name="content_type"/>
+				<field name="source_id_key"/>
+				<field name="model_id"/>
+			    </tree>
+			</field>
+		    </page>
+		    <page string="Pages">
+			<field name="page_ids">
+			    <tree>
+				<field name="url"/>
+			    </tree>
+			</field>
+		    </page>
+		    <page string="Pre write rules">
+			<field name="rule_ids_pre">
+			    <tree>
+				<field name="sequence" widget="handle"/>
+				<field name="name"/>
+				<field name="key"/>
+				<field name="operation" widget="selection"/>
+				<field name="condition"/>
+			    </tree>
+			</field>
+		    </page>
+		    <page string="Post write rules">
+			<field name="rule_ids_post">
+			    <tree>
+				<field name="sequence" widget="handle"/>
+				<field name="name"/>
+				<field name="key"/>
+				<field name="operation" widget="selection"/>
+				<field name="condition"/>
+			    </tree>
+			</field>
+		    </page>
+		</notebook>
+	    </form>
 	</field>
     </record>
 

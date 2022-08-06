@@ -45,19 +45,28 @@
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
 	<field name="code">
-	    record.scrape_page(sync=True, prune=False)
+	    records.scrape_page(sync=True, prune=False)
 	</field>
     </record>
 
     <record model="ir.actions.server" id="webscrape_action_scrape_page_multi">
-	<field name="name">Scrape Pages</field>
+	<field name="name">Batch scrape</field>
 	<field name="model_id" ref="model_webscrape_page"/>
 	<field name="binding_model_id" ref="model_webscrape_page"/>
 	<field name="binding_view_types">list</field>
 	<field name="state">code</field>
 	<field name="code">
-	    [page.scrape_page(sync=True, prune=False) for page in records]
+	    records.batch_scrape(sync=True, prune=False, scrape_all=True)
 	</field>
+    </record>
+
+    <record model="ir.actions.server" id="webscrape_action_toggle_skip">
+	<field name="name">Toggle 'skip'</field>
+	<field name="model_id" ref="model_webscrape_page"/>
+	<field name="binding_model_id" ref="model_webscrape_page"/>
+	<field name="binding_view_types">list</field>
+	<field name="state">code</field>
+	<field name="code">records.toggle_skip()</field>
     </record>
 
 </odoo>

@@ -18,11 +18,13 @@ class WebscrapeSite(models.Model):
     _description = "Webscraper Sites"
 
     name = fields.Char(required=True)
-    base_url = fields.Char("Base URL", required=True)  # TODO: to scraper
-    scraper_model = fields.Char("Scraper model")
-    scraper_id = fields.Many2oneReference(
-        model_field='scraper_model',
+    scraper_model = fields.Selection(
+        string="Scraper model",
+        selection='_selection_scraper',
+    )
+    scraper_id = fields.Reference(
         string="Scraper",
+        selection='_selection_scraper',
     )
     batch_size = fields.Integer("Batch size", default=10)
     last_fetch = fields.Datetime("Last fetched")
@@ -37,29 +39,21 @@ class WebscrapeSite(models.Model):
         string="Pages",
     )
 
-    def _scraper(self):
-        scraper = self.env[self.scraper_model].browse(self.scraper_id).exists()
-        if scraper:
-            return scraper
-        raise MissingError(
-            f"Scraper not found '{self.scraper_model},{self.scraper_id}'"
-        )
-
-    def test(self):
-        return self._scraper()._test()
-
-    def _test(self):
-        return "Hello from site!"
+    @api.model
+    def _selection_scraper(self):
+        return []
 
     def process_sitemap(self):
         self.ensure_one()
+        if not self.scraper_id:
+            raise MissingError("No scraper set!")
 
-        _logger.info(f"Fetching sitemap from {self.base_url}")
-        sitemap = self._scraper().process_sitemap()
+        _logger.info(f"Fetching sitemap for site {self.name}")
+        sitemap = self.scraper_id.process_sitemap()
         for d in sitemap:
             d.update(site_id=self.id)
         if not self.last_fetch:
-            _logger.info(f"Creating page objects for site {self.base_url}")
+            _logger.info(f"Creating page objects for site {self.name}")
             pages = self.env['webscrape.page'].create(sitemap)
             self.last_fetch = datetime.now()
             return sitemap, pages.ids
@@ -84,10 +78,10 @@ class WebscrapeSite(models.Model):
     def batch_scrape(self, type_mapping_line_id=False,
                      sync=False, prune=False):
         pages = self.page_ids.filtered(
-            lambda r: (
-                not r.last_scrape or
-                (r.last_mod and r.last_scrape and r.last_mod > r.last_scrape)
-                # TODO: or (not r.last_mod and r.last_scrape + week < now)
+            lambda p: not p.skip and (
+                not p.last_scrape or
+                (p.last_mod and p.last_scrape and p.last_mod > p.last_scrape)
+                # TODO: or (not p.last_mod and p.last_scrape + week < now)
             )
         )
         if type_mapping_line_id:
@@ -101,7 +95,9 @@ class WebscrapeSite(models.Model):
 
     def _scrape_page(self, url):
         self.ensure_one()
-        return self._scraper().scrape_page(url)
+        if self.scraper_id:
+            return self.scraper_id.scrape_page(url)
+        raise MissingError("No scraper set!")
 
 
 class WebscrapeTypeMappingLine(models.Model):
@@ -144,6 +140,18 @@ class WebscrapeTypeMappingLine(models.Model):
         'webscrape.rule',
         inverse_name='type_mapping_line_id',
         string="Rules",
+    )
+    rule_ids_pre = fields.One2many(
+        'webscrape.rule',
+        inverse_name='type_mapping_line_id',
+        string="Pre rules",
+        domain=[('pre_post', '=', 'pre')],
+    )
+    rule_ids_post = fields.One2many(
+        'webscrape.rule',
+        inverse_name='type_mapping_line_id',
+        string="Post rules",
+        domain=[('pre_post', '=', 'post')],
     )
 
     def process_values(self, vals):
@@ -251,6 +259,15 @@ class WebscrapeTypeMappingLine(models.Model):
             return b64encode(res.content)
         return False
 
+    def button_details(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "webscrape.type.mapping.line",
+            "views": [[False, "form"]],
+            "res_id": self.id,
+        }
+
 
 class WebscrapeFieldMappingLine(models.Model):
     _name = 'webscrape.field.mapping.line'
@@ -270,6 +287,11 @@ class WebscrapeFieldMappingLine(models.Model):
         ondelete='cascade',
         string="Target field",
         required=True,
+    )
+    pre_post = fields.Selection(
+        string="Pre/Post",
+        selection=[('pre', 'pre'), ('post', 'post')],
+        default='pre',
     )
 
     @api.depends(
@@ -297,6 +319,8 @@ class WebscrapePage(models.Model):
     level = fields.Integer("Tree level", default=0)
     changefreq = fields.Char("Change frequency")
     priority = fields.Float("Priority")
+    skip = fields.Boolean()
+    notes = fields.Text()
     last_mod = fields.Datetime("Last modification time")
     last_scrape = fields.Datetime("Last scrape time")
     site_id = fields.Many2one(
@@ -315,16 +339,25 @@ class WebscrapePage(models.Model):
     )
     # TODO: Language
 
-    def batch_scrape(self, batch_size=1, sync=False, prune=False):
+    def toggle_skip(self):
+        for record in self:
+            record.skip = not record.skip
+
+    def batch_scrape(
+            self, sync=False, prune=False,
+            batch_size=1, scrape_all=False
+    ):
         res = []
         i = 0
         for page in self:
-            if i == batch_size:
+            if i == batch_size and not scrape_all:
                 return res
             try:
                 res.append(page.scrape_page(sync=sync, prune=prune))
             except Exception as e:
                 _logger.error(e)
+                page.notes = ("Scrape error:\n" + str(e))
+                page.skip = True
             i += 1
 
     def scrape_page(self, sync=False, prune=False):
@@ -381,7 +414,7 @@ class WebscrapePage(models.Model):
 
             for type_mapping in type_mappings:
                 vals = data['vals'].copy()
-                type_mapping.process_values(vals)
+                type_mapping.process_values(vals)  # TODO: select pre/post
 
                 source_id = data["vals"].get(type_mapping.source_id_key)
                 self.object_ids.sync(
@@ -395,6 +428,7 @@ class WebscrapeObject(models.Model):
     _description = "Webscraper Scraped Object Relations"
 
     name = fields.Char(required=True)
+    priority = fields.Integer("Priority", default=100)
     source_id = fields.Char(
         "Source ID",
         help="A unique identifier that helps the CRUD methods "
@@ -425,11 +459,22 @@ class WebscrapeObject(models.Model):
         comodel_name='webscrape.page',
         string="Related pages",
     )
-    priority = fields.Integer("Priority", default=100)
     rule_ids = fields.One2many(
         'webscrape.rule',
         inverse_name='object_id',
         string="Rules",
+    )
+    rule_ids_pre = fields.One2many(
+        'webscrape.rule',
+        inverse_name='object_id',
+        string="Pre rules",
+        domain=[('pre_post', '=', 'pre')],
+    )
+    rule_ids_post = fields.One2many(
+        'webscrape.rule',
+        inverse_name='object_id',
+        string="Post rules",
+        domain=[('pre_post', '=', 'post')],
     )
 
     @api.model
@@ -443,23 +488,29 @@ class WebscrapeObject(models.Model):
             return False
         object_relation = self.search([
             ('source_id', '=', source_id),
-            ('type_mapping_line_ids', '=', [type_mapping_id]),
-            ('page_ids', '=', [page_id]),
+            ('model_id', '=', type_mapping.model_id.id)
         ], limit=1)
         if object_relation:
-            object_rules = object_relation.rule_ids.filtered(
-                lambda r: r.pre_post == 'pre'
-            )
-            for rule in object_rules:
-                vals_mod = rule.process_rule(vals)
-                vals.update(vals_mod)
-            type_mapping.sanitize_values(vals)
             record_id = object_relation.related_record
             record_model = object_relation.model_model
             record = self.env[record_model].browse(record_id)
-            assert(record.exists())
-            record.write(vals)
-        elif type_mapping.sanitize_values(vals):
+            if record.exists():
+                object_rules = object_relation.rule_ids.filtered(
+                    lambda r: r.pre_post == 'pre'
+                )
+                for rule in object_rules:
+                    vals_mod = rule.process_rule(vals)
+                    vals.update(vals_mod)
+                type_mapping.sanitize_values(vals)
+                record.write(vals)
+                if page_id and page_id not in object_relation.page_ids.ids:
+                    object_relation.page_ids = [Command.link(page_id)]
+            else:
+                record = None
+                object_relation.unlink()
+                object_relation = False
+
+        if not object_relation and type_mapping.sanitize_values(vals):
             record = self.env[type_mapping.model_id.model].create(vals)
             self.create({
                 "name": record.name if record.name else source_id,
@@ -469,14 +520,9 @@ class WebscrapeObject(models.Model):
                 "type_mapping_line_ids": [Command.link(type_mapping.id)],
                 "page_ids": [Command.link(page_id)] if page_id else None,
             })
-        else:
-            _logger.error(
-                "Sanity check failed for object: "
-                f"type ID '{type_mapping_id}', ID '{source_id}'"
-            )
-            return False
 
         # post process type and object rules on record
+        # TODO: append record to vals
         type_rules = type_mapping.rule_ids.filtered(
             lambda r: r.pre_post == 'post'
         )
@@ -490,6 +536,7 @@ class WebscrapeObject(models.Model):
             for rule in object_rules:
                 vals_mod = rule.process_rule(vals)
                 vals.update(vals_mod)
+        # TODO: write post vals on record
         return True
 
 
@@ -545,9 +592,6 @@ class WebscrapeRule(models.Model):
         readonly=True,
         compute="_compute_help",
     )
-    param1 = fields.Char()
-    param2 = fields.Char()
-    param3 = fields.Char()
     sub_pattern = fields.Char()
     sub_repl = fields.Char()
     sub_count = fields.Integer()
@@ -611,7 +655,7 @@ class WebscrapeRule(models.Model):
                 lambda_str = f"lambda v: {self.lambda_str}"
                 f = self._get_lambda(lambda_str, vals)
                 if f:
-                    result = f(value)
+                    result = f(value)  # TODO: dictionary to lambda
         elif self.operation == 'orm_ref' and self.orm_ref:
             record = self.env.ref(self.orm_ref)
             if record:
