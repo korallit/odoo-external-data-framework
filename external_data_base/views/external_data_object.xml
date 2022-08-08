@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <!-- Window actions -->
+    <record id="external_data_object_action_window" model="ir.actions.act_window">
+	<field name="name">External Data Object</field>
+	<field name="res_model">external.data.object</field>
+    </record>
+
+    <record id="external_data_object_list_view" model="ir.ui.view">
+	<field name="name">External Data Objects</field>
+	<field name="model">external.data.object</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="foreign_id"/>
+		<field name="data_source_id"/>
+		<field name="field_mapping_id"/>
+	    </tree>
+	</field>
+    </record>
+
+    <record id="external_data_object_form_view" model="ir.ui.view">
+	<field name="name">External Data Objects</field>
+	<field name="model">external.data.object</field>
+	<field name="arch" type="xml">
+	    <form>
+		<group>
+		    <field name="foreign_id"/>
+		    <field name="data_source_id"/>
+		    <field name="field_mapping_id"/>
+		    <field name="object_link_id"/>
+		</group>
+		<notebook>
+		    <page string="Packages">
+			<field name="package_ids">
+			    <tree>
+				<field name="name"/>
+				<button string="open" type="object"
+					name="button_open"
+					context="{'default_res_id': active_id}"/>
+			    </tree>
+			</field>
+		    </page>
+		    <page string="Custom process rules">
+			<separator string="Pre write rules"/>
+			<field name="rule_ids_pre"
+			       context="{'default_object_id': id, 'default_pre_post': 'pre'}">
+			    <tree>
+				<field name="sequence" widget="handle"/>
+				<field name="name"/>
+				<field name="key"/>
+				<field name="operation" widget="selection"/>
+				<field name="condition"/>
+				<control>
+				    <create string="Add a rule"/>
+				    <create string="Add a 'create only' rule"
+					    context="{
+						     'default_condition': 'metadata.get(\'odoo_id\')',
+						     }"
+					    />
+				</control>
+			    </tree>
+			</field>
+			<separator string="Post write rules"/>
+			<field name="rule_ids_post"
+			       context="{'default_object_id': id, 'default_pre_post': 'post'}">
+			    <tree>
+				<field name="sequence" widget="handle"/>
+				<field name="name"/>
+				<field name="key"/>
+				<field name="operation" widget="selection"/>
+				<field name="condition"/>
+				<control>
+				    <create string="Add a rule"/>
+				    <create string="Add a 'create only' rule"
+					    context="{
+						     'default_condition': 'metadata.get(\'odoo_id\')',
+						     }"
+					    />
+				</control>
+			    </tree>
+			</field>
+		    </page>
+		</notebook>
+	    </form>
+	</field>
+    </record>
+
+</odoo>

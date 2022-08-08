@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Window actions -->
+    <record id="external_data_type_action_window" model="ir.actions.act_window">
+	<field name="name">External Data Field Mapping</field>
+	<field name="res_model">external.data.field.mapping</field>
+    </record>
+
+    <!-- Views -->
+    <record id="external_data_field_mapping_form_view" model="ir.ui.view">
+	<field name="name">External Data Field Mapping</field>
+	<field name="model">external.data.field.mapping</field>
+	<field name="arch" type="xml">
+	    <form>
+		<sheet>
+		    <group>
+			<field name="name"/>
+			<field name="foreign_type"/>
+			<field name="foreign_id_key"/>
+			<field name="model_id"/>
+		    </group>
+		    <separator string="Field mapping"/>
+		    <field name="field_mapping_line_ids">
+			<tree editable="bottom">
+			    <field name="foreign_field_name"/>
+			    <field name="odoo_model" invisible="1"/>
+			    <field name="odoo_field"
+				   domain="[('model', '=', odoo_model)]"
+				   />
+			</tree>
+		    </field>
+		    <separator string="Pre write rules"/>
+		    <field name="rule_ids_pre"
+			   context="{'default_field_mapping_id': id, 'default_pre_post': 'pre'}">
+			<tree>
+			    <field name="sequence" widget="handle"/>
+			    <field name="name"/>
+			    <field name="key"/>
+			    <field name="operation" widget="selection"/>
+			    <field name="condition"/>
+			    <control>
+				<create string="Add a rule"/>
+				<create string="Add a 'create only' rule"
+					context="{
+						 'default_condition': 'metadata.get(\'odoo_id\')',
+						 }"
+					/>
+			    </control>
+			</tree>
+		    </field>
+		    <separator string="Post write rules"/>
+		    <field name="rule_ids_post"
+			   context="{'default_field_mapping_id': active_id, 'default_pre_post': 'post'}">
+			<tree>
+			    <field name="sequence" widget="handle"/>
+			    <field name="name"/>
+			    <field name="key"/>
+			    <field name="operation" widget="selection"/>
+			    <field name="condition"/>
+			    <control>
+				<create string="Add a rule"/>
+				<create string="Add a 'create only' rule"
+					context="{
+						 'default_condition': 'metadata.get(\'odoo_id\')',
+						 }"
+					/>
+			    </control>
+			</tree>
+		    </field>
+		</sheet>
+	    </form>
+	</field>
+    </record>
+
+</odoo>

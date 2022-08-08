@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="external_data_menu_parent"
+	      name="External Data"
+	      parent="base.menu_administration"/>
+	      
+    <menuitem id="external_data_menu_data_sources"
+	      name="Data Sources"
+	      parent="external_data_menu_parent"
+	      action="external_data_source_action_window"/>
+	      
+    <menuitem id="external_data_menu_packages"
+	      name="Packages"
+	      parent="external_data_menu_parent"
+	      action="external_data_package_action_window"/>
+
+    <menuitem id="external_data_menu_objects"
+	      name="Objects"
+	      parent="external_data_menu_parent"
+	      action="external_data_object_action_window"/>
+
+</odoo>
