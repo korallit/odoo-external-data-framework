@@ -141,30 +141,28 @@ class WebscrapeTypeMappingLine(models.Model):
         inverse_name='type_mapping_line_id',
         string="Rules",
     )
-    rule_ids_pre = fields.One2many(
-        'webscrape.rule',
-        inverse_name='type_mapping_line_id',
-        string="Pre rules",
-        domain=[('pre_post', '=', 'pre')],
-    )
-    rule_ids_post = fields.One2many(
-        'webscrape.rule',
-        inverse_name='type_mapping_line_id',
-        string="Post rules",
-        domain=[('pre_post', '=', 'post')],
-    )
+    # rule_ids_pre = fields.One2many(
+    #     'webscrape.rule',
+    #     inverse_name='type_mapping_line_id',
+    #     string="Pre rules",
+    #     domain=[('pre_post', '=', 'pre')],
+    # )
+    # rule_ids_post = fields.One2many(
+    #     'webscrape.rule',
+    #     inverse_name='type_mapping_line_id',
+    #     string="Post rules",
+    #     domain=[('pre_post', '=', 'post')],
+    # )
 
-    def process_values(self, vals):
+    def process_values(self, data):
         self.ensure_one()
+        vals = data.copy()
         for mapping in self.field_mapping_line_ids:
             key = mapping.target_field.name
             if key in vals.keys():
                 continue
             vals.update({key: vals.get(mapping.source_key)})
-        for rule in self.rule_ids.filtered(lambda r: r.pre_post == 'pre'):
-            vals_mod = rule.process_rule(vals)
-            vals.update(vals_mod)
-        return True
+        return vals
 
     def sanitize_values(self, vals):
         model = self.env[self.model_id.model]
@@ -288,11 +286,6 @@ class WebscrapeFieldMappingLine(models.Model):
         string="Target field",
         required=True,
     )
-    pre_post = fields.Selection(
-        string="Pre/Post",
-        selection=[('pre', 'pre'), ('post', 'post')],
-        default='pre',
-    )
 
     @api.depends(
         'type_mapping_line_id',
@@ -413,14 +406,21 @@ class WebscrapePage(models.Model):
                 )
 
             for type_mapping in type_mappings:
-                vals = data['vals'].copy()
-                type_mapping.process_values(vals)  # TODO: select pre/post
-
                 source_id = data["vals"].get(type_mapping.source_id_key)
                 self.object_ids.sync(
-                    source_id, type_mapping.id, vals,
-                    page_id=self.id
+                    source_id, type_mapping.id,
+                    page_id=self.id, data=data['vals'],
                 )
+
+    def button_open(self):
+        self.ensure_one()
+        res_id = self.env.context.get('default_res_id')
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "webscrape.page",
+            "views": [[False, "form"]],
+            "res_id": res_id,
+        }
 
 
 class WebscrapeObject(models.Model):
@@ -429,7 +429,7 @@ class WebscrapeObject(models.Model):
 
     name = fields.Char(required=True)
     priority = fields.Integer("Priority", default=100)
-    source_id = fields.Char(
+    source_id = fields.Char(  # TODO: foreign_id
         "Source ID",
         help="A unique identifier that helps the CRUD methods "
         "to match the source object with the targeted record.",
@@ -446,7 +446,7 @@ class WebscrapeObject(models.Model):
         related='model_id.model',
         store=True,
     )
-    related_record = fields.Many2oneReference(
+    record_id = fields.Many2oneReference(
         "Related record",
         model_field='model_model',
         required=True,
@@ -464,43 +464,50 @@ class WebscrapeObject(models.Model):
         inverse_name='object_id',
         string="Rules",
     )
-    rule_ids_pre = fields.One2many(
-        'webscrape.rule',
-        inverse_name='object_id',
-        string="Pre rules",
-        domain=[('pre_post', '=', 'pre')],
-    )
-    rule_ids_post = fields.One2many(
-        'webscrape.rule',
-        inverse_name='object_id',
-        string="Post rules",
-        domain=[('pre_post', '=', 'post')],
-    )
+    # rule_ids_pre = fields.One2many(
+    #     'webscrape.rule',
+    #     inverse_name='object_id',
+    #     string="Pre rules",
+    #     domain=[('pre_post', '=', 'pre')],
+    # )
+    # rule_ids_post = fields.One2many(
+    #     'webscrape.rule',
+    #     inverse_name='object_id',
+    #     string="Post rules",
+    #     domain=[('pre_post', '=', 'post')],
+    # )
 
     @api.model
-    def sync(self, source_id, type_mapping_id, vals, page_id=False):
-        # update/create record
+    def sync(self, source_id, type_mapping_id, page_id=False, data={}):
+        if not source_id:
+            raise ValidationError(f"Invalid source_id: {source_id}")
+
         type_mapping = self.type_mapping_line_ids.browse(type_mapping_id)
         if not type_mapping.exists():
             _logger.error(
                 f"Couldn't find type mapping by ID {type_mapping_id}"
             )
             return False
+        metadata = {
+            'source_id': source_id,
+            'content_type': type_mapping.content_type,
+            'record_model': type_mapping.model_id.model,
+            'type_mapping_id': type_mapping.id,
+            'site_id': type_mapping.site_id.id,
+        }
+        vals = type_mapping.process_values(data)
+        type_mapping.rule_ids_pre.apply_rules(vals, metadata=metadata)
         object_relation = self.search([
             ('source_id', '=', source_id),
             ('model_id', '=', type_mapping.model_id.id)
         ], limit=1)
         if object_relation:
-            record_id = object_relation.related_record
+            record_id = object_relation.record_id
             record_model = object_relation.model_model
             record = self.env[record_model].browse(record_id)
             if record.exists():
-                object_rules = object_relation.rule_ids.filtered(
-                    lambda r: r.pre_post == 'pre'
-                )
-                for rule in object_rules:
-                    vals_mod = rule.process_rule(vals)
-                    vals.update(vals_mod)
+                metadata.update(record_id=record.id)
+                self.rule_ids_pre.apply_rules(vals, metadata=metadata)
                 type_mapping.sanitize_values(vals)
                 record.write(vals)
                 if page_id and page_id not in object_relation.page_ids.ids:
@@ -516,27 +523,25 @@ class WebscrapeObject(models.Model):
                 "name": record.name if record.name else source_id,
                 "source_id": source_id,
                 "model_id": type_mapping.model_id.id,
-                "related_record": record.id,
+                "record_id": record.id,
                 "type_mapping_line_ids": [Command.link(type_mapping.id)],
                 "page_ids": [Command.link(page_id)] if page_id else None,
             })
+            metadata.update({
+                'record_id': record.id,
+                'record_created': True,
+            })
 
         # post process type and object rules on record
-        # TODO: append record to vals
-        type_rules = type_mapping.rule_ids.filtered(
-            lambda r: r.pre_post == 'post'
-        )
-        for rule in type_rules:
-            vals_mod = rule.process_rule(vals)
-            vals.update(vals_mod)
+        post_rule_ids = type_mapping.rule_ids_post.ids
         if object_relation:
-            object_rules = object_relation.rule_ids.filtered(
-                lambda r: r.pre_post == 'post'
-            )
-            for rule in object_rules:
-                vals_mod = rule.process_rule(vals)
-                vals.update(vals_mod)
-        # TODO: write post vals on record
+            post_rule_ids += object_relation.rule_ids_post.ids
+        if post_rule_ids:
+            vals = type_mapping.process_values(data)
+            rules = self.rule_ids.browse(post_rule_ids)
+            rules.apply_rules(vals, metadata=metadata)
+            type_mapping.sanitize_values(vals)
+            record.write(vals)
         return True
 
 
@@ -554,48 +559,70 @@ class WebscrapeRule(models.Model):
         "Key/Field",
         required=True,
     )
-    pre_post = fields.Selection(
-        string="Pre/Post",
-        selection=[('pre', 'pre'), ('post', 'post')],
-        default='pre',
+    # pre_post = fields.Selection(
+    #     string="Pre/Post",
+    #     selection=[('pre', 'pre'), ('post', 'post')],
+    #     default='pre',
+    # )
+    type_mapping_line_id = fields.Many2one(
+        'webscrape.type.mapping.line',
+        ondelete='set null',
+        string="Type mapping",
     )
-    operation = fields.Selection(
-        string="Operation",
-        selection=[
-            ('exclude', "exclude"),
-            ('clear', "clear"),
-            ('replace', "regexp replace"),
-            ('lambda', "lambda"),
-            ('orm_ref', "ORM external ID"),
-            ('orm_expr', "ORM expression"),
-        ],
-        required=True,
+    object_id = fields.Many2one(
+        'webscrape.object',
+        ondelete='set null',
+        string="Scraped object",
     )
-    operation_help = fields.Selection(
-        string="Description",
-        selection=[
-            ('exclude', "Pops value from 'vals' dictionary."),
-            ('clear', "Set value to 'False'"),
-            ('replace', "Replace regexp with re.sub(pattern, repl, count)"),
-            (
-                'lambda',
-                "lambda expression evaluated to value ('v' in input)."
-                "Other values can be injected in '{}' brackets."
-            ),
-            ('orm_ref', "ORM external ID"),
-            (
-                'orm_expr', "Valid formats (parts are optional):\n"
-                "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
-                "model.search(domain, limit).filtered(lmabda).field"
-            ),
-        ],
-        readonly=True,
-        compute="_compute_help",
+    allowed_site_ids = fields.Many2many(
+        'webscrape.site',
+        string="Allowed sites",
+        help="Applied only on object rules and if metadata contains site_id. "
+        "Empty list means 'allow all'.",
     )
+    # operation = fields.Selection(
+    #     string="Operation",
+    #     selection=[
+    #         ('exclude', "exclude"),
+    #         ('clear', "clear"),
+    #         ('replace', "regexp replace"),
+    #         ('lambda', "lambda"),
+    #         ('eval', "eval"),
+    #         ('orm_ref', "ORM external ID"),
+    #         ('orm_expr', "ORM expression"),
+    #     ],
+    #     required=True,
+    # )
+    # operation_help = fields.Selection(
+    #     string="Description",
+    #     selection=[
+    #         ('exclude', "Pops value from 'vals' dictionary."),
+    #         ('clear', "Set value to 'False'"),
+    #         ('replace', "Replace regexp with re.sub(pattern, repl, count)"),
+    #         (
+    #             'lambda',
+    #             "lambda expression evaluated to value ('v' in input)."
+    #             "Other values can be injected in '{}' brackets."
+    #         ),
+    #         (
+    #             'eval', "Evaluates the given expression. "
+    #             "Available variables: vals(dict), metadata(dict)."
+    #         ),
+    #         ('orm_ref', "ORM external ID"),
+    #         (
+    #             'orm_expr', "Valid formats (parts are optional):\n"
+    #             "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
+    #             "model.search(domain, limit).filtered(lmabda).field"
+    #         ),
+    #     ],
+    #     readonly=True,
+    #     compute="_compute_help",
+    # )
     sub_pattern = fields.Char()
     sub_repl = fields.Char()
     sub_count = fields.Integer()
     lambda_str = fields.Char("lambda v:")
+    eval_str = fields.Char("eval")
     orm_ref = fields.Char("ORM external ID")
     orm_model = fields.Many2one(
         comodel_name='ir.model',
@@ -608,18 +635,14 @@ class WebscrapeRule(models.Model):
     orm_field = fields.Char("field")
     condition = fields.Char(
         help="A python expression that evaluates to a boolean (default=True). "
-        "Reference to vals data by keys can be injected in '{}' brackets."
+        "Available variables: vals(dict), metadata(dict)."
     )
-    type_mapping_line_id = fields.Many2one(
-        'webscrape.type.mapping.line',
-        ondelete='set null',
-        string="Type mapping",
-    )
-    object_id = fields.Many2one(
-        'webscrape.object',
-        ondelete='set null',
-        string="Scraped object",
-    )
+
+    @api.model
+    def default_get(self, fields):
+        fields += ['type_mapping_line_id', 'object_id']
+        res = super(WebscrapeRule, self).default_get(fields)
+        return res
 
     @api.depends('operation')
     @api.onchange('operation')
@@ -627,61 +650,51 @@ class WebscrapeRule(models.Model):
         for record in self:
             record.operation_help = record.operation
 
-    def process_rule(self, data, vals={}):
-        if isinstance(data, dict):
-            if not vals:
-                vals = data.copy()
-            value = vals.get(self.key)
-        elif isinstance(data, models.Model) and hasattr(data, self.key):
-            value = data[self.key]
-        else:
-            value = None
+    def apply_rules(self, vals, metadata={}):
+        if not isinstance(vals, dict):
+            raise ValidationError(
+                f"vals should be a dictionary, got this: {vals}"
+            )
 
-        if self.condition:
-            condition = self._eval_condition(vals)
-            if not condition:
-                return vals
+        for rule in self:
+            if (
+                    metadata.get('site_id') and rule.allowed_site_ids and
+                    metadata['site_id'] not in rule.allowed_site_ids
+            ):
+                continue
+            if rule.condition:
+                if not bool(rule._eval_expr(rule.condition, vals, metadata)):
+                    continue
 
-        result = None
-        if self.operation == 'exclude':
-            if self.key in vals.keys():
-                vals.pop(self.key)
-        elif self.operation == 'clear':
-            result = False
-        elif self.operation == 'replace':
-            result = self._regexp_replace(value, vals)
-        elif self.operation == 'lambda' and self.lambda_str:
-            if self.lambda_str:
-                lambda_str = f"lambda v: {self.lambda_str}"
-                f = self._get_lambda(lambda_str, vals)
-                if f:
-                    result = f(value)  # TODO: dictionary to lambda
-        elif self.operation == 'orm_ref' and self.orm_ref:
-            record = self.env.ref(self.orm_ref)
-            if record:
-                result = record.id
-        elif self.operation == 'orm_expr':
-            result = self._orm_expr(value, vals)
+            value = vals.get(rule.key)
+            result = None
+            if rule.operation == 'exclude':
+                if rule.key in vals.keys():
+                    vals.pop(rule.key)
+            elif rule.operation == 'clear':
+                result = False
+            elif rule.operation == 'replace':
+                result = rule._regexp_replace(value, vals)
+            elif rule.operation == 'lambda' and rule.lambda_str:
+                if rule.lambda_str:
+                    lambda_str = f"lambda v: {rule.lambda_str}"
+                    f = rule._get_lambda(lambda_str, vals)
+                    if f:
+                        result = f(value)
+            elif rule.operation == 'eval':
+                result = rule._eval_expr(rule.eval_str, vals, metadata)
+            elif rule.operation == 'orm_ref' and rule.orm_ref:
+                record = rule.env.ref(rule.orm_ref)
+                if record:
+                    result = record.id
+            elif rule.operation == 'orm_expr':
+                result = rule._orm_expr(value, vals)
 
-        if isinstance(result, type(None)):
-            return vals
-        elif isinstance(data, dict):
-            vals[self.key] = result
-        elif isinstance(data, models.Model) and hasattr(data, self.key):
-            data[self.key] = result
-
-        return vals
-
-    def _eval_condition(self, vals):
-        expr = self.condition.format(**vals)
-        try:
-            condition = bool(eval(expr))
-        except SyntaxError:
-            _logger.error(f"Failed to evaluate expression: {expr}")
-            condition = True
-        return condition
+            if not isinstance(result, type(None)):
+                vals[rule.key] = result
 
     def _regexp_replace(self, value, vals):
+        self.ensure_one()
         if not value:
             return None
         pattern = re.compile(self.sub_pattern) if self.sub_pattern else '.*'
@@ -690,6 +703,7 @@ class WebscrapeRule(models.Model):
         return re.sub(pattern, repl, value, count=count)
 
     def _orm_expr(self, value, vals):
+        self.ensure_one()
         if self.orm_model:
             records = self.env[self.orm_model.model]
         else:
@@ -721,6 +735,7 @@ class WebscrapeRule(models.Model):
             return None
 
     def _eval_domain_str(self, vals):
+        self.ensure_one()
         if not self.orm_domain:
             return False
         domain_match = re.search(r'\[.*\]', self.orm_domain.format(**vals))
@@ -736,6 +751,16 @@ class WebscrapeRule(models.Model):
             if isinstance(domain, list):
                 return domain
         return False
+
+    @api.model
+    def _eval_expr(self, expr, vals={}, metadata={}):
+        if not isinstance(expr, str):
+            return None
+        try:
+            return eval(expr)
+        except SyntaxError:
+            _logger.error(f"Failed to evaluate expression: {expr}")
+            return None
 
     @api.model
     def _get_lambda(self, lambda_str, vals={}):

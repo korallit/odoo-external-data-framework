@@ -17,57 +17,108 @@
 		    <group>
 			<field name="name"/>
 			<field name="foreign_type"/>
-			<field name="foreign_id_key"/>
+			<field name="foreign_id_field_type_id"/>
 			<field name="model_id"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">
 			<tree editable="bottom">
-			    <field name="foreign_field_name"/>
+			    <field name="foreign_field_id"
+				   domain="[('field_mapping_id', '=', id)]"
+				   />
 			    <field name="odoo_model" invisible="1"/>
-			    <field name="odoo_field"
+			    <field name="odoo_field_id"
 				   domain="[('model', '=', odoo_model)]"
 				   />
 			</tree>
 		    </field>
-		    <separator string="Pre write rules"/>
-		    <field name="rule_ids_pre"
-			   context="{'default_field_mapping_id': id, 'default_pre_post': 'pre'}">
-			<tree>
-			    <field name="sequence" widget="handle"/>
-			    <field name="name"/>
-			    <field name="key"/>
-			    <field name="operation" widget="selection"/>
-			    <field name="condition"/>
-			    <control>
-				<create string="Add a rule"/>
-				<create string="Add a 'create only' rule"
-					context="{
-						 'default_condition': 'metadata.get(\'odoo_id\')',
-						 }"
-					/>
-			    </control>
-			</tree>
-		    </field>
-		    <separator string="Post write rules"/>
-		    <field name="rule_ids_post"
-			   context="{'default_field_mapping_id': active_id, 'default_pre_post': 'post'}">
-			<tree>
-			    <field name="sequence" widget="handle"/>
-			    <field name="name"/>
-			    <field name="key"/>
-			    <field name="operation" widget="selection"/>
-			    <field name="condition"/>
-			    <control>
-				<create string="Add a rule"/>
-				<create string="Add a 'create only' rule"
-					context="{
-						 'default_condition': 'metadata.get(\'odoo_id\')',
-						 }"
-					/>
-			    </control>
-			</tree>
-		    </field>
+		    <notebook>
+			<page string="Processing pulled data">
+			    <separator string="Pre write rules"/>
+			    <field name="rule_ids_pre"
+				   context="{'default_field_mapping_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
+				<tree>
+				    <field name="sequence" widget="handle"/>
+				    <field name="name"/>
+				    <field name="key"/>
+				    <field name="operation" widget="selection"/>
+				    <field name="condition"/>
+				    <control>
+					<create string="Add a rule"/>
+					<create string="Add a 'create only' rule"
+						context="{
+							 'default_condition': 'metadata.get(\'record\')',
+							 }"
+						/>
+					<create string="Add a default rule"
+						context="{
+							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+							 }"
+						/>
+				    </control>
+				</tree>
+			    </field>
+			    <separator string="Post write rules"/>
+			    <field name="rule_ids_post"
+				   context="{'default_field_mapping_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
+				<tree>
+				    <field name="sequence" widget="handle"/>
+				    <field name="name"/>
+				    <field name="key"/>
+				    <field name="operation" widget="selection"/>
+				    <field name="condition"/>
+				    <control>
+					<create string="Add a rule"/>
+					<create string="Add a 'create only' rule"
+						context="{
+							 'default_condition': 'metadata.get(\'record\')',
+							 }"
+						/>
+					<create string="Add a default rule"
+						context="{
+							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+							 }"
+						/>
+				    </control>
+				</tree>
+			    </field>
+			</page>
+			<page string="Processing pushed data">
+			    <field name="rule_ids_push"
+				   context="{'default_field_mapping_id': id, 'default_direction': 'push'}">
+				<tree>
+				    <field name="sequence" widget="handle"/>
+				    <field name="name"/>
+				    <field name="key"/>
+				    <field name="operation" widget="selection"/>
+				    <field name="condition"/>
+				    <control>
+					<create string="Add a rule"/>
+					<create string="Add a default rule"
+						context="{
+							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+							 }"
+						/>
+				    </control>
+				</tree>
+			    </field>
+			</page>
+			<page string="Relevant data sources">
+			    <field name="data_source_id_id" invisible="1"/>
+			    <field name="relevant_data_source_ids">
+				<tree>
+				    <field name="name"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Foreign type fields">
+			    <field name="foreign_field_type_ids" context="{'default_field_mapping_id': id}">
+				<tree editable="bottom">
+				    <field name="name"/>
+				</tree>
+			    </field>
+			</page>
+		    </notebook>
 		</sheet>
 	    </form>
 	</field>

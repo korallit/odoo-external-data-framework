@@ -20,19 +20,16 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'stock'],
+    'depends': ['base', 'external_data_base', 'stock'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
-        'views/views.xml',
-        'views/templates.xml',
-        'views/webscrape.xml',
-        'actions/webscrape.xml',
-        'data/scraper_meleget_hu.xml',
-    ],
-    # only loaded in demonstration mode
-    'demo': [
-        'demo/demo.xml',
+        # 'views/views.xml',
+        # 'views/templates.xml',
+        # 'views/webscrape.xml',
+        # 'actions/webscrape.xml',
+        'data/meleget_hu.xml',
+        'data/field_mappings.xml',
     ],
 }

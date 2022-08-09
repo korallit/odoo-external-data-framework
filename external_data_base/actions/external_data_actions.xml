@@ -25,13 +25,13 @@
     </record>
 
     <record model="ir.actions.server" id="external_data_action_pull_package">
-	<field name="name">Pull Package</field>
+	<field name="name">Pull</field>
 	<field name="model_id" ref="model_external_data_package"/>
 	<field name="binding_model_id" ref="model_external_data_package"/>
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
 	<field name="code">
-	    records.pull_package(sync=True, prune=False)
+	    records.pull(sync=True, prune=False)
 	</field>
     </record>
 

@@ -48,7 +48,7 @@
 				    />
 			    <field name="foreign_type"/>
 			    <field name="model_id"/>
-			    <field name="foreign_id_key"/>
+			    <field name="foreign_id_field_type_id"/>
 			</tree>
 		    </field>
 		</sheet>

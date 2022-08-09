@@ -24,9 +24,16 @@ class ExternalDataRule(models.Model):
         "Key/Field",
         required=True,
     )
+    direction = fields.Selection(
+        string="Direction",
+        selection=[('pull', 'pull'), ('push', 'push')],
+        required=True,
+        default='pull',
+    )
     pre_post = fields.Selection(
         string="Pre/Post",
         selection=[('pre', 'pre'), ('post', 'post')],
+        required=True,
         default='pre',
     )
     field_mapping_id = fields.Many2one(
@@ -49,6 +56,7 @@ class ExternalDataRule(models.Model):
             ('eval', "eval"),
             ('orm_ref', "ORM external ID"),
             ('orm_expr', "ORM expression"),
+            ('object_link', "Object link"),
         ],
         required=True,
     )
@@ -57,7 +65,7 @@ class ExternalDataRule(models.Model):
         selection=[
             ('exclude', "Pops value from 'vals' dictionary."),
             ('clear', "Set value to 'False'"),
-            ('replace', "Replace regexp with re.sub(pattern, repl, count)"),
+            ('replace', "Replace value with re.sub(pattern, repl, count)"),
             (
                 'lambda',
                 "lambda expression evaluated to value ('v' in input)."
@@ -72,6 +80,10 @@ class ExternalDataRule(models.Model):
                 'orm_expr', "Valid formats (parts are optional):\n"
                 "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
                 "model.search(domain, limit).filtered(lmabda).field"
+            ),
+            (
+                'object_link', "Search a linked external object by "
+                "data source, mapping and value as foreign ID."
             ),
         ],
         readonly=True,
@@ -92,6 +104,14 @@ class ExternalDataRule(models.Model):
     orm_filter = fields.Char("filtered(lambda r:")
     orm_map = fields.Char("mapped(lambda r:")
     orm_field = fields.Char("field")
+    obj_source_id = fields.Many2one(
+        'external.data.source',
+        string="Data source",
+    )
+    obj_mapping_id = fields.Many2one(
+        'external.data.field.mapping',
+        "Field mapping",
+    )
     condition = fields.Char(
         help="A python expression that evaluates to a boolean (default=True). "
         "Available variables: vals(dict), metadata(dict)."
@@ -100,7 +120,7 @@ class ExternalDataRule(models.Model):
     @api.model
     def default_get(self, fields):
         fields += ['field_mapping_id', 'object_id']
-        res = super(WebscrapeRule, self).default_get(fields)
+        res = super(ExternalDataRule, self).default_get(fields)
         return res
 
     @api.depends('operation')
@@ -116,6 +136,7 @@ class ExternalDataRule(models.Model):
             )
 
         for rule in self:
+            metadata.update(key=rule.key)
             if rule.condition:
                 if not bool(rule._eval_expr(rule.condition, vals, metadata)):
                     continue
@@ -143,6 +164,8 @@ class ExternalDataRule(models.Model):
                     result = record.id
             elif rule.operation == 'orm_expr':
                 result = rule._orm_expr(value, vals)
+            elif rule.operation == 'object_link':
+                result = rule._search_object_link(value)
 
             if not isinstance(result, type(None)):
                 vals[rule.key] = result
@@ -150,7 +173,7 @@ class ExternalDataRule(models.Model):
     def _regexp_replace(self, value, vals):
         self.ensure_one()
         if not value:
-            return None
+            value = ''
         pattern = re.compile(self.sub_pattern) if self.sub_pattern else '.*'
         repl = self.sub_repl.format(**vals) if self.sub_repl else ''
         count = int(self.sub_count)  # converts False to 0
@@ -205,6 +228,18 @@ class ExternalDataRule(models.Model):
             if isinstance(domain, list):
                 return domain
         return False
+
+    def _search_object_link(self, value):
+        self.ensure_one()
+        if not self.obj_mapping_id:
+            return None
+        object_link = self.env['external.data.object'].search([
+            ('field_mapping_id', '=', self.obj_mapping_id.id),
+            ('foreign_id', '=', value),
+        ]).object_link_id
+        if object_link:
+            return object_link.record_id
+        return None
 
     @api.model
     def _eval_expr(self, expr, vals={}, metadata={}):

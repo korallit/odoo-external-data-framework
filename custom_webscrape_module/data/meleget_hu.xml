@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <!-- Vendor -->
+    <record model="res.partner" id="meleget_hu_vendor">
+	<field name="name">Hideget-meleget Kft.</field>
+	<field name="company_type">company</field>
+    </record>
+
+    <!-- Pricelist -->
+    <record model="product.pricelist" id="meleget_hu_pricelist_list">
+	<field name="name">Meleget.hu list price</field>
+    </record>
+
+    <record model="product.pricelist" id="meleget_hu_pricelist_sale">
+	<field name="name">Meleget.hu sale price</field>
+    </record>
+
+    <!-- Data source type -->
+    <record model="webscrape.meleget.hu" id="external_data_source_type_meleget_hu">
+        <field name="name">meleget.hu</field>
+        <field name="base_url">https://www.meleget.hu</field>
+    </record>
+
+</odoo>

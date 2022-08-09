@@ -12,6 +12,24 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
+class ExternalDataFieldType(models.Model):
+    _name = 'external.data.field.type'
+    _description = "External Data Field Type"
+
+    name = fields.Char(required=True)
+    field_mapping_id = fields.Many2one(
+        'external.data.field.mapping',
+        string="Field mapping",
+        ondelete='cascade',
+    )
+
+    @api.model
+    def default_get(self, fields):
+        fields += ['field_mapping_id']
+        res = super(ExternalDataFieldType, self).default_get(fields)
+        return res
+
+
 class ExternalDataFieldMappingLine(models.Model):
     _name = 'external.data.field.mapping.line'
     _description = "External Data Field Mapping Line"
@@ -23,9 +41,14 @@ class ExternalDataFieldMappingLine(models.Model):
         string="Field mapping",
         required=True,
     )
-    foreign_field_name = fields.Char("Source key", required=True)
+    foreign_field_id = fields.Many2one(
+        'external.data.field.type',
+        string="Foreign field",
+        required=True,
+        ondelete='restrict',
+    )
     odoo_model = fields.Char(related='field_mapping_id.model_id.model')
-    odoo_field = fields.Many2one(
+    odoo_field_id = fields.Many2one(
         'ir.model.fields',
         ondelete='cascade',
         string="Odoo field",
@@ -34,16 +57,16 @@ class ExternalDataFieldMappingLine(models.Model):
 
     @api.depends(
         'field_mapping_id',
-        'foreign_field_name',
-        'odoo_field',
+        'foreign_field_id',
+        'odoo_field_id',
     )
     def _compute_name(self):
         for record in self:
             src = '.'.join([
                 record.field_mapping_id.foreign_type,
-                record.foreign_field_name,
+                record.foreign_field_id.name,
             ])
-            dst = f"{record.odoo_field.model}.{record.odoo_field.name}"
+            dst = f"{record.odoo_field_id.model}.{record.odoo_field_id.name}"
             record.name = f"{src} > {dst}"
 
 
@@ -67,9 +90,11 @@ class ExternalDataFieldMapping(models.Model):
         string="Model",
         required=True,
     )
-    foreign_id_key = fields.Char(
-        "Foreign ID key",
+    foreign_id_field_type_id = fields.Many2one(
+        'external.data.field.type',
+        string="Foreign ID field",
         required=True,
+        ondelete='restrict',
         help="The ID parameter key in the external data structure."
     )
     data_source_id = fields.Many2one(
@@ -77,6 +102,20 @@ class ExternalDataFieldMapping(models.Model):
         ondelete='cascade',
         string="Data source",
         required=True,
+    )
+    data_source_id_id = fields.Integer(
+        related='data_source_id.id',
+    )
+    relevant_data_source_ids = fields.Many2many(
+        'external.data.source',
+        string="Other data sources",
+        help="Other data sources that may contain relevant data.",
+        domain="[('id', '!=', data_source_id_id)]",
+    )
+    foreign_field_type_ids = fields.One2many(
+        'external.data.field.type',
+        inverse_name='field_mapping_id',
+        string="Foreign type fields",
     )
     field_mapping_line_ids = fields.One2many(
         'external.data.field.mapping.line',
@@ -92,45 +131,57 @@ class ExternalDataFieldMapping(models.Model):
         'external.data.rule',
         inverse_name='field_mapping_id',
         string="Pre rules",
-        domain=[('pre_post', '=', 'pre')],
+        domain=[
+            ('direction', '=', 'pull'),
+            ('pre_post', '=', 'pre'),
+        ],
     )
     rule_ids_post = fields.One2many(
         'external.data.rule',
         inverse_name='field_mapping_id',
         string="Post rules",
-        domain=[('pre_post', '=', 'post')],
+        domain=[
+            ('direction', '=', 'pull'),
+            ('pre_post', '=', 'post'),
+        ],
+    )
+    rule_ids_push = fields.One2many(
+        'external.data.rule',
+        inverse_name='field_mapping_id',
+        string="Post rules",
+        domain=[('direction', '=', 'push')],
     )
 
     def apply_mapping(self, data):
         self.ensure_one()
+        field_mapping_lines = self.field_mapping_line_ids
         if isinstance(data, dict):  # pull
+            source_keys = field_mapping_lines.mapped('foreign_field_id.name')
+            target_keys = field_mapping_lines.mapped('odoo_field_id.name')
             vals = data.copy()
-            for mapping_line in self.field_mapping_line_ids:
-                source_key = mapping_line.foreign_field_name
-                target_key = mapping_line.odoo_field.name
-                if key in vals.keys():
-                    continue
-                vals[target_key] = vals.get(source_key)
-            return vals
         elif isinstance(data, models.Model):  # push
             data.ensure_one()
-            vals = {}
-            for mapping_line in self.field_mapping_line_ids:
-                source_key = mapping_line.odoo_field.name
-                target_key = mapping_line.foreign_field_name
-                vals[target_key] = data[source_key]
-            return vals
+            source_keys = field_mapping_lines.mapped('odoo_field_id.name')
+            target_keys = field_mapping_lines.mapped('foreign_field_id.name')
+            vals = data.read(source_keys)[0]
         else:
             raise ValidationError(
                 "Mapping can process a dictionary (pull) "
                 "or an odoo record (push)."
             )
 
+        i = 0
+        while i < len(source_keys):
+            if target_keys[i] not in vals.keys():
+                vals[target_keys[i]] = vals.get(source_keys[i])
+            i += 1
+        return vals
+
     def sanitize_values(self, vals):
         self.ensure_one()
         model = self.env[self.model_id.model]
         fields_data = model.fields_get()
-        defaults = model.default_get(fields_data.keys())
+        defaults = model.default_get(list(fields_data.keys()))
         enough_to_create = True
         for name, field in fields_data.items():
             if name not in vals.keys():
@@ -164,7 +215,9 @@ class ExternalDataFieldMapping(models.Model):
                         vals[name] = data
                     else:
                         vals.pop(name)
-                elif value is not False:
+                elif value is False:
+                    vals[name] = value
+                else:
                     vals.pop(name)
             elif field.get('type') == 'many2one':
                 if isinstance(value, str):
@@ -175,7 +228,9 @@ class ExternalDataFieldMapping(models.Model):
                         vals.pop(name)
                 elif isinstance(value, list) and value:
                     vals[name] = value[0]
-                elif not (isinstance(value, int) or value is False):
+                elif isinstance(value, int) or value is False:
+                    vals[name] = value
+                else:
                     vals.pop(name)
             elif field.get('type') in ['one2many', 'many2many']:
                 # only clear and link is supported

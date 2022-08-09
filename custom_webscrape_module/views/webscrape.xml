@@ -96,23 +96,41 @@
 			</tree>
 		    </field>
 		    <separator string="Pre write rules"/>
-		    <field name="rule_ids_pre">
+		    <field name="rule_ids_pre"
+			   context="{'default_type_mapping_line_id': id, 'default_pre_post': 'pre'}">
 			<tree>
 			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
 			    <field name="key"/>
 			    <field name="operation" widget="selection"/>
 			    <field name="condition"/>
+			    <control>
+				<create string="Add a rule"/>
+				<create string="Add a 'create only' rule"
+					context="{
+						 'default_condition': 'metadata.get(\'record_created\')',
+						 }"
+					/>
+			    </control>
 			</tree>
 		    </field>
 		    <separator string="Post write rules"/>
-		    <field name="rule_ids_post">
+		    <field name="rule_ids_post"
+			   context="{'default_type_mapping_line_id': active_id, 'default_pre_post': 'post'}">
 			<tree>
 			    <field name="sequence" widget="handle"/>
 			    <field name="name"/>
 			    <field name="key"/>
 			    <field name="operation" widget="selection"/>
 			    <field name="condition"/>
+			    <control>
+				<create string="Add a rule"/>
+				<create string="Add a 'create only' rule"
+					context="{
+						 'default_condition': 'metadata.get(\'record_created\')',
+						 }"
+					/>
+			    </control>
 			</tree>
 		    </field>
 		</sheet>
@@ -157,7 +175,7 @@
 		    <field name="object_ids">
 			<tree>
 			    <field name="model_id"/>
-			    <field name="related_record"/>
+			    <field name="record_id"/>
 			    <field name="source_id"/>
 			    <field name="priority"/>
 			</tree>
@@ -188,7 +206,7 @@
 		    <field name="name"/>
 		    <field name="source_id"/>
 		    <field name="model_id"/>
-		    <field name="related_record"/>
+		    <field name="record_id"/>
 		</group>
 		<notebook>
 		    <page string="Type mappings">
@@ -205,28 +223,49 @@
 			<field name="page_ids">
 			    <tree>
 				<field name="url"/>
+				<button string="open" type="object"
+					name="button_open"
+					context="{'default_res_id': active_id}"/>
 			    </tree>
 			</field>
 		    </page>
-		    <page string="Pre write rules">
-			<field name="rule_ids_pre">
+		    <page string="Custom process rules">
+			<separator string="Pre write rules"/>
+			<field name="rule_ids_pre"
+			       context="{'default_object_id': id, 'default_pre_post': 'pre'}">
 			    <tree>
 				<field name="sequence" widget="handle"/>
 				<field name="name"/>
 				<field name="key"/>
 				<field name="operation" widget="selection"/>
 				<field name="condition"/>
+				<control>
+				    <create string="Add a rule"/>
+				    <create string="Add a 'create only' rule"
+					    context="{
+						     'default_condition': 'metadata.get(\'record_created\')',
+						     }"
+					    />
+				</control>
 			    </tree>
 			</field>
-		    </page>
-		    <page string="Post write rules">
-			<field name="rule_ids_post">
+			<separator string="Post write rules"/>
+			<field name="rule_ids_post"
+			       context="{'default_object_id': id, 'default_pre_post': 'post'}">
 			    <tree>
 				<field name="sequence" widget="handle"/>
 				<field name="name"/>
 				<field name="key"/>
 				<field name="operation" widget="selection"/>
 				<field name="condition"/>
+				<control>
+				    <create string="Add a rule"/>
+				    <create string="Add a 'create only' rule"
+					    context="{
+						     'default_condition': 'metadata.get(\'record_created\')',
+						     }"
+					    />
+				</control>
 			    </tree>
 			</field>
 		    </page>
@@ -250,33 +289,47 @@
 			<field name="type_mapping_line_id"/>
 			<field name="object_id"/>
 		    </group>
-		    <separator string="Operations"/>
-		    <group>
-			<field name="operation" widget="selection"/>
-			<field name="operation_help" widget="selection"/>
-			<field name="condition" style="font-family: monospace;" class="bg-dark text-light"/>
-		    </group>
-		    <group attrs="{'invisible': [('operation', '!=', 'replace')]}">
-			<field name="sub_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="sub_repl" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="sub_count"/>
-		    </group>
-		    <group attrs="{'invisible': [('operation', '!=', 'lambda')]}">
-			<field name="lambda_str"
-			       style="font-family: monospace;" class="bg-dark text-light"/>
-		    </group>
-		    <group attrs="{'invisible': [('operation', '!=', 'orm_ref')]}">
-			<field name="orm_ref"
-			       style="font-family: monospace;" class="bg-dark text-light"/>
-		    </group>
-		    <group attrs="{'invisible': [('operation', '!=', 'orm_expr')]}">
-			<field name="orm_model"/>
-			<field name="orm_domain" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="orm_limit"/>
-			<field name="orm_filter" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="orm_map" style="font-family: monospace;" class="bg-dark text-light"/>
-			<field name="orm_field" style="font-family: monospace;" class="bg-dark text-light"/>
-		    </group>
+		    <notebook>
+			<page string="Operations">
+			    <group>
+				<field name="operation" widget="selection"/>
+				<field name="operation_help" widget="selection"/>
+				<field name="condition" style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'replace')]}">
+				<field name="sub_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="sub_repl" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="sub_count"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'lambda')]}">
+				<field name="lambda_str"
+				       style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'eval')]}">
+				<field name="eval_str"
+				       style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'orm_ref')]}">
+				<field name="orm_ref"
+				       style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'orm_expr')]}">
+				<field name="orm_model"/>
+				<field name="orm_domain" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="orm_limit"/>
+				<field name="orm_filter" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="orm_map" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="orm_field" style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
+			</page>
+			<page string="Allowed sites" attrs="{'invisible': [('object_id', '=', False)]}">
+			    <field name="allowed_site_ids">
+				<tree>
+				    <field name="name"/>
+				</tree>
+			    </field>
+			</page>
+		    </notebook>
 		</sheet>
 	    </form>
 	</field>

@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from datetime import datetime
 from odoo import fields, models
 
 import logging
@@ -10,7 +11,7 @@ class ExternalDataObject(models.Model):
     _name = 'external.data.object'
     _description = "External Data Object"
 
-    name = fields.Char()
+    name = fields.Char()  # TODO: compute?
     field_mapping_id = fields.Many2one(
         'external.data.field.mapping',
         string="Type mappings",
@@ -22,10 +23,20 @@ class ExternalDataObject(models.Model):
         "to match the foreign object with an odoo record.",
         required=True,
     )
+    field_mapping_model = fields.Char(
+        "Mapped model",
+        related='field_mapping_id.model_id.model',
+        store=True,
+    )
     object_link_id = fields.Many2one(
         'external.data.object.link',
         ondelete='set null',
         string="Object link",
+    )
+    object_link_record_id = fields.Many2oneReference(
+        "Linked record id",
+        model_field='field_mapping_model',
+        related='object_link_id.record_id',
     )
     package_ids = fields.Many2many(
         'external.data.package',
@@ -42,13 +53,25 @@ class ExternalDataObject(models.Model):
         'external.data.rule',
         inverse_name='object_id',
         string="Pre rules",
-        domain=[('pre_post', '=', 'pre')],
+        domain=[
+            ('direction', '=', 'pull'),
+            ('pre_post', '=', 'pre'),
+        ],
     )
     rule_ids_post = fields.One2many(
         'external.data.rule',
         inverse_name='object_id',
         string="Post rules",
-        domain=[('pre_post', '=', 'post')],
+        domain=[
+            ('direction', '=', 'pull'),
+            ('pre_post', '=', 'post'),
+        ],
+    )
+    rule_ids_push = fields.One2many(
+        'external.data.rule',
+        inverse_name='object_id',
+        string="Post rules",
+        domain=[('direction', '=', 'push')],
     )
     last_sync = fields.Datetime("Last sync")
 
@@ -66,6 +89,7 @@ class ExternalDataObject(models.Model):
         else:
             record = self.object_link_id._record()
             record.write(vals)
+        self.last_sync = datetime.now()
 
     def find_and_set_object_link_id(self):
         """Tries to find object in other data sources,
@@ -74,24 +98,31 @@ class ExternalDataObject(models.Model):
         if self.object_link_id:
             return True
 
-        field_mappings = self.data_source_id.shared_field_mapping_ids.filtered(
-            lambda r: r.model_id == self.field_mapping_id.model_id.id
-        )
-        if field_mappings:
-            similar_objects = self.search([
-                ('field_mapping_id', 'in', field_mappings.ids)
-            ])
-            object_link_ids = similar_objects.mapped('object_link_id')
-            if not object_link_ids:
-                return False
-            elif len(object_link_ids) > 1:
-                _logger.warning(
-                    f"Multiple object links found for object ID {self.id}, "
-                    "picking first."
-                )
-            self.object_link_id = object_link_ids[0]
-            return True
-        return False
+        other_data_source_ids = self.field_mapping_id.relevant_data_source_ids
+        if not other_data_source_ids:
+            return False
+
+        other_field_mappings = self.field_mapping_id.search([
+            ('data_source_id', 'in', other_data_source_ids),
+            ('model_id', '=', self.field_mapping_id.model_id.id)
+        ])
+        if not other_field_mappings:
+            return False
+
+        similar_objects = self.search([
+            ('field_mapping_id', 'in', other_field_mappings.ids)
+        ])
+        if not similar_objects:
+            return False
+
+        object_link_ids = similar_objects.mapped('object_link_id')
+        if len(object_link_ids) > 1:
+            _logger.warning(
+                f"Multiple object links found for object ID {self.id}, "
+                "picking first. Consider manual data consolidation."
+            )
+        self.object_link_id = object_link_ids[0]
+        return True
 
 
 class ExternalDataObjectLink(models.Model):
@@ -105,6 +136,10 @@ class ExternalDataObjectLink(models.Model):
         ondelete='cascade',
         required=True,
     )
+    model_model = fields.Char(
+        "Model name",
+        related='model_id.model',
+    )
     record_id = fields.Many2oneReference(
         "Related record",
         model_field='model_model',
@@ -117,5 +152,7 @@ class ExternalDataObjectLink(models.Model):
     )
 
     def _record(self):
+        if  not self:
+            return False
         self.ensure_one()
         return self.env[self.model_id.model].browse(self.record_id).exists()

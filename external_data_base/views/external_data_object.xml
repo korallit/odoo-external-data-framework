@@ -41,10 +41,10 @@
 			    </tree>
 			</field>
 		    </page>
-		    <page string="Custom process rules">
+		    <page string="Processing pulled data">
 			<separator string="Pre write rules"/>
 			<field name="rule_ids_pre"
-			       context="{'default_object_id': id, 'default_pre_post': 'pre'}">
+			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
 			    <tree>
 				<field name="sequence" widget="handle"/>
 				<field name="name"/>
@@ -55,7 +55,12 @@
 				    <create string="Add a rule"/>
 				    <create string="Add a 'create only' rule"
 					    context="{
-						     'default_condition': 'metadata.get(\'odoo_id\')',
+						     'default_condition': 'metadata.get(\'record\')',
+						     }"
+					    />
+				    <create string="Add a default rule"
+					    context="{
+						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
 						     }"
 					    />
 				</control>
@@ -63,7 +68,7 @@
 			</field>
 			<separator string="Post write rules"/>
 			<field name="rule_ids_post"
-			       context="{'default_object_id': id, 'default_pre_post': 'post'}">
+			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
 			    <tree>
 				<field name="sequence" widget="handle"/>
 				<field name="name"/>
@@ -74,7 +79,32 @@
 				    <create string="Add a rule"/>
 				    <create string="Add a 'create only' rule"
 					    context="{
-						     'default_condition': 'metadata.get(\'odoo_id\')',
+						     'default_condition': 'metadata.get(\'record\')',
+						     }"
+					    />
+				    <create string="Add a default rule"
+					    context="{
+						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+						     }"
+					    />
+				</control>
+			    </tree>
+			</field>
+		    </page>
+		    <page string="Processing pushed data">
+			<field name="rule_ids_push"
+			       context="{'default_object_id': id, 'default_direction': 'push'}">
+			    <tree>
+				<field name="sequence" widget="handle"/>
+				<field name="name"/>
+				<field name="key"/>
+				<field name="operation" widget="selection"/>
+				<field name="condition"/>
+				<control>
+				    <create string="Add a rule"/>
+				    <create string="Add a default rule"
+					    context="{
+						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
 						     }"
 					    />
 				</control>

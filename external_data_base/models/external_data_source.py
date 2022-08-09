@@ -16,7 +16,7 @@ class ExternalDataSource(models.Model):
 
     name = fields.Char(required=True)
     data_source_type_id = fields.Reference(
-        string="Scraper",
+        string="Data source type",
         selection='_selection_data_source_type',
     )
     batch_size = fields.Integer("Batch size", default=10)
@@ -31,11 +31,6 @@ class ExternalDataSource(models.Model):
         inverse_name='data_source_id',
         string="Packages",
     )
-    shared_field_mapping_ids = fields.Many2many(
-        'external.data.field.mapping',
-        string="Shared field mappings",
-        domain=[('data_source_id', '!=', id)],
-    )
 
     @api.model
     def _selection_data_source_type(self):
@@ -48,6 +43,7 @@ class ExternalDataSource(models.Model):
 
         _logger.info(f"Fetching packages from data source {self.name}")
         package_dataset = self.data_source_type_id.fetch_package_data()
+        # first fetch
         if not self.last_fetch and not self.package_ids:
             _logger.info(
                 f"Creating package objects for data source {self.name}"
@@ -56,6 +52,8 @@ class ExternalDataSource(models.Model):
                 Command.create(package_data)
                 for package_data in package_dataset
             ]
+            self.last_fetch = datetime.now()
+            return True
 
         _logger.info("Syncing package data...")
         for p_data in package_dataset:
@@ -92,7 +90,6 @@ class ExternalDataSource(models.Model):
                 "Pull is not available for data source "
                 f"type '{data_source_type_id.name}'"
             )
-        _logger.info(f"Pulling package {package.name}")
         return self.data_source_type_id.pull_package(package.name)
 
     def batch_pull(self, filter_lambda=None, sync=False, prune=False):
@@ -170,7 +167,7 @@ class ExternalDataPackage(models.Model):
         dataset = self.data_source_id.pull_package(self.id)
 
         # find foreign_types
-        found_foreign_types = dataset.keys()
+        found_foreign_types = list(dataset.keys())
         field_mappings = self.field_mapping_ids.search([
             ('data_source_id', '=', self.data_source_id.id),
             ('foreign_type', 'in', found_foreign_types),
@@ -180,14 +177,15 @@ class ExternalDataPackage(models.Model):
 
         metadata = {
             'package_id': self.id,
-            'direction': pull,
+            'direction': 'pull',
         }
         foreign_ids = []
         for field_mapping in field_mappings:
             index = 0
-            for data in dataset[field.mapping.foreign_type]:
+            for data in dataset[field_mapping.foreign_type]:
                 index += 1
-                foreign_id = data.get(field_mapping.foreign_id_key)
+                foreign_id_key = field_mapping.foreign_id_field_type_id.name
+                foreign_id = data.get(foreign_id_key)
                 if not foreign_id:
                     _logger.error(
                         f"Missing foreign ID from package {self.name}"
@@ -209,15 +207,14 @@ class ExternalDataPackage(models.Model):
                         'priority': index,
                     })
                     external_object.find_and_set_object_link_id()
-                if self.id not in external_object.package_ids:
+                if self.id not in external_object.package_ids.ids:
                     external_object.package_ids = [Command.link(self.id)]
 
                 metadata.update({
                     'field_mapping_id': field_mapping.id,
                     'foreign_type': field_mapping.foreign_type,
                     'foreign_id': foreign_id,
-                    'odoo_model': field_mapping.model_id.model,
-                    'odoo_id': external_object.object_link_id.record_id,
+                    'record': external_object.object_link_id._record(),
                 })
                 # pre processing
                 vals = field_mapping.apply_mapping(data)
