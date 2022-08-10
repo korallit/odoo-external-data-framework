@@ -18,7 +18,7 @@ class ExternalDataSourceMelegetHu(models.Model):
     @api.model
     def _selection_data_source_type(self):
         selection = super(
-            ExternalDataSourceMelegetHu, self )._selection_data_source_type()
+            ExternalDataSourceMelegetHu, self)._selection_data_source_type()
         selection.append(('webscrape.meleget.hu', 'meleget.hu'))
         return selection
 
@@ -79,7 +79,7 @@ class WebscrapeMelegetHu(models.Model):
                 )
             if self.last_fetch and last_mod and self.last_fetch > last_mod:
                 continue
-            path = pkg.loc.text[len(base_url):].split('/')
+            # path = pkg.loc.text[len(base_url):].split('/')
             # level = len(path)
             # changefreq = pkg.changefreq.text if pkg.changefreq else None
             priority = float(pkg.priority.text) if pkg.priority else None
@@ -105,7 +105,9 @@ class WebscrapeMelegetHu(models.Model):
         # breadcrumbs (=categories)
         data_category = []
         bc_parent = None
-        breadcrumbs_bs = soup.body.find(itemtype='http://schema.org/BreadcrumbList')
+        breadcrumbs_bs = soup.body.find(
+            itemtype='http://schema.org/BreadcrumbList'
+        )
         for bc in self._breadcrumbs(breadcrumbs_bs):
             href = bc.get("item")
             if not href or href == url or href == base_url:
@@ -123,7 +125,9 @@ class WebscrapeMelegetHu(models.Model):
         if soup.find(itemtype='//schema.org/Product'):
             data_product = self._parse_product_data(soup)
             if data_category:
-                data_product.update(category_href=data_category[-1].get('href'))
+                data_product.update({
+                    'category_href': data_category[-1].get('href'),
+                })
             data.update(product=[data_product])
 
         # TODO: attachments
@@ -175,8 +179,7 @@ class WebscrapeMelegetHu(models.Model):
                 found = re.findall('[0-9]+', price_original.string)
                 res.update(price_original=''.join(found) if found else None)
         except AttributeError as e:
-            print(e)
-            # TODO: log error "'NoneType' object has no attribute 'findChild'"
+            _logger.error("schema.org/Offer missing error:" + str(e))
             addtocart_a = soup.find("a", id="add_to_cart")
             if addtocart_a:
                 res.update({

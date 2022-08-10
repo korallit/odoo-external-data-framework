@@ -1,88 +1,130 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- category -->
-    <record model="external.data.field.type" id="meleget_hu_mapping_category_field_type_href">
-        <field name="name">href</field>
+    <!-- Foreign Types -->
+    <record model="external.data.type" id="meleget_hu_foreign_type_product">
+	<field name="name">product</field>
     </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_sku">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">sku</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_name">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">name</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_description">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">description</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_brand">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">brand</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_image">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">image</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_category_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">category_href</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_price">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">price</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_pricecurrency">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">pricecurrency</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_availability">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">availability</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_category">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">category</field>
+    </record>
+
+    <record model="external.data.type" id="meleget_hu_foreign_type_category">
+	<field name="name">category</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_name">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">name</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">href</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_parent_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">parent_href</field>
+    </record>
+
+    <!-- category -->
     <record model="external.data.field.mapping" id="meleget_hu_mapping_category">
         <field name="data_source_id"
                search="[('name', '=', 'meleget.hu')]"/>
         <field name="name">category &gt; public.category</field>
 	<field name="sequence">1</field>
-	<field name="foreign_type">category</field>
         <field name="model_id" ref="website_sale.model_product_public_category"/>
-	<field name="foreign_id_field_type_id"
-	       ref="custom_webscrape_module.meleget_hu_mapping_category_field_type_href"/>
+	<field name="foreign_type_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="foreign_id_field_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_category_field_href"/>
     </record>
 
-    <record model="external.data.field.type" id="meleget_hu_mapping_category_field_type_href">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
-    </record>
-
-    <record model="external.data.field.type" id="meleget_hu_mapping_category_field_type_name">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
-	<field name="name">name</field>
-    </record>
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_category_field_name">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
-	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_mapping_category_field_type_name"/>
+	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category_field_name"/>
         <field name="odoo_field_id" ref="website_sale.field_product_public_category__name"/>
     </record>
 
+    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_category_field_parent_id">
+        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
+	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category_field_parent_href"/>
+        <field name="odoo_field_id" ref="website_sale.field_product_public_category__parent_id"/>
+    </record>
     <record model="external.data.rule" id="meleget_hu_mapping_category_rule_parent_id">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
 	<field name="pre_post">pre</field>
 	<field name="name">parent_id</field>
 	<field name="key">parent_id</field>
 	<field name="sequence">1</field>
-	<field name="operation">orm_expr</field>
-	<field name="orm_model" ref="external_data_base.model_external_data_object"/>
-	<field name="orm_domain">[('field_mapping_model', '=', 'product.public.category'), ('foreign_id', '=', '{parent_href}')]</field>
-	<field name="orm_field">object_link_record_id</field>
+	<field name="operation">object_link</field>
+	<field name="obj_source_id" search="[('name', '=', 'meleget.hu')]"/>
+	<field name="obj_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_category"/>
     </record>
 
     <!-- product -->
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_field_type_sku">
-        <field name="name">sku</field>
-    </record>
     <record model="external.data.field.mapping" id="meleget_hu_mapping_product">
         <field name="data_source_id"
                search="[('name', '=', 'meleget.hu')]"/>
         <field name="name">product &gt; product.template</field>
 	<field name="sequence">2</field>
-	<field name="foreign_type">product</field>
+	<field name="foreign_type_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
         <field name="model_id" ref="product.model_product_template"/>
-	<field name="foreign_id_field_type_id"
-	       ref="custom_webscrape_module.meleget_hu_mapping_product_field_type_sku"/>
+	<field name="foreign_id_field_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_sku"/>
     </record>
 
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_field_type_sku">
+    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_default_code">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-    </record>
-    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_sku">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_mapping_product_field_type_sku"/>
+        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_sku"/>
         <field name="odoo_field_id" ref="product.field_product_template__default_code"/>
     </record>
 
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_field_type_name">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-	<field name="name">name</field>
-    </record>
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_name">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_mapping_product_field_type_name"/>
+        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_name"/>
         <field name="odoo_field_id" ref="product.field_product_template__name"/>
     </record>
 
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_field_type_category_href">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-	<field name="name">category_href</field>
-    </record>
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_public_categ_ids">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
-        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_mapping_product_field_type_category_href"/>
+        <field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_category_href"/>
         <field name="odoo_field_id" ref="website_sale.field_product_template__public_categ_ids"/>
     </record>
     <record model="external.data.rule" id="meleget_hu_mapping_product_rule_public_categ_ids">
@@ -97,50 +139,56 @@
     </record>
 
     <!-- pricelist item -->
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_pricelist_item_field_type_sku">
-        <field name="name">sku</field>
-    </record>
     <record model="external.data.field.mapping" id="meleget_hu_mapping_product_pricelist_item">
         <field name="data_source_id"
                search="[('name', '=', 'meleget.hu')]"/>
         <field name="name">product &gt; product.pricelist.item</field>
 	<field name="sequence">3</field>
-	<field name="foreign_type">product</field>
+	<field name="foreign_type_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
         <field name="model_id" ref="product.model_product_pricelist_item"/>
-	<field name="foreign_id_field_type_id"
-	       ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item_field_type_sku"/>
+	<field name="foreign_id_field_id"
+	       ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_sku"/>
     </record>
 
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_pricelist_item_field_type_sku">
+    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_pricelist_item_field_fixed_price">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
-    </record>
-
-    <record model="external.data.field.type" id="meleget_hu_mapping_product_pricelist_item_field_type_price">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
-        <field name="name">price</field>
-    </record>
-    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_pricelist_item_field_fixed_price">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
-	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item_field_type_price"/>
+	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_price"/>
         <field name="odoo_field_id" ref="product.field_product_pricelist_item__fixed_price"/>
     </record>
 
-    <record model="external.data.rule" id="meleget_hu_mapping_pricelist_item_rule_pricelist_id">
+    <record model="external.data.field.mapping.line" id="meleget_hu_mapping_pricelist_item_field_product_tmpl_id">
+        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
+	<field name="foreign_field_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product_field_sku"/>
+        <field name="odoo_field_id" ref="product.field_product_pricelist_item__product_tmpl_id"/>
+    </record>
+    <record model="external.data.rule" id="meleget_hu_mapping_pricelist_item_rule_product_tmpl_id">
+        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
+	<field name="pre_post">pre</field>
+	<field name="name">find product_tmpl_id by sku</field>
+	<field name="key">product_tmpl_id</field>
+	<field name="sequence">1</field>
+	<field name="operation">object_link</field>
+	<field name="obj_source_id" search="[('name', '=', 'meleget.hu')]"/>
+	<field name="obj_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product"/>
+    </record>
+
+    <record model="external.data.rule" id="meleget_hu_mapping_product_pricelist_item_rule_pricelist_id">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
 	<field name="pre_post">pre</field>
 	<field name="name">pricelist_id</field>
 	<field name="key">pricelist_id</field>
-	<field name="sequence">1</field>
+	<field name="sequence">2</field>
 	<field name="operation">orm_ref</field>
 	<field name="orm_ref">custom_webscrape_module.meleget_hu_pricelist_list</field>
     </record>
 
-    <record model="external.data.rule" id="meleget_hu_mapping_pricelist_item_rule_compute_price">
+    <record model="external.data.rule" id="meleget_hu_mapping_product_pricelist_item_rule_compute_price">
         <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
 	<field name="pre_post">pre</field>
 	<field name="name">compute_price</field>
 	<field name="key">compute_price</field>
-	<field name="sequence">2</field>
+	<field name="sequence">3</field>
 	<field name="operation">replace</field>
 	<field name="sub_repl">fixed</field>
     </record>
@@ -150,21 +198,9 @@
 	<field name="pre_post">pre</field>
 	<field name="name">applied_on</field>
 	<field name="key">applied_on</field>
-	<field name="sequence">3</field>
+	<field name="sequence">4</field>
 	<field name="operation">replace</field>
 	<field name="sub_repl">1_product</field>
-    </record>
-
-    <record model="external.data.rule" id="meleget_hu_mapping_pricelist_item_rule_product_tmpl_id">
-        <field name="field_mapping_id" ref="custom_webscrape_module.meleget_hu_mapping_product_pricelist_item"/>
-	<field name="pre_post">pre</field>
-	<field name="name">product_tmpl_id</field>
-	<field name="key">product_tmpl_id</field>
-	<field name="sequence">4</field>
-	<field name="operation">orm_expr</field>
-	<field name="orm_model" ref="external_data_base.model_external_data_object"/>
-	<field name="orm_domain">[('field_mapping_model', '=', 'product.template'), ('foreign_id', '=', '{sku}')]</field>
-	<field name="orm_field">object_link_record_id</field>
     </record>
 
     <record model="external.data.rule" id="meleget_hu_mapping_pricelist_item_rule_date_start">

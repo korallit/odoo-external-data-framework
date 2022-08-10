@@ -1,13 +1,15 @@
 # coding: utf-8
 
 import re
-from datetime import datetime
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 import logging
 _logger = logging.getLogger(__name__)
+
+# may be used in user input
+from datetime import datetime
 
 
 class ExternalDataRule(models.Model):
@@ -57,6 +59,7 @@ class ExternalDataRule(models.Model):
             ('orm_ref', "ORM external ID"),
             ('orm_expr', "ORM expression"),
             ('object_link', "Object link"),
+            # TODO: ('fetch_binary', "Fetch binary"),
         ],
         required=True,
     )
@@ -169,6 +172,10 @@ class ExternalDataRule(models.Model):
 
             if not isinstance(result, type(None)):
                 vals[rule.key] = result
+                if 'processed_keys' in metadata.keys():
+                    metadata['processed_keys'].append(rule.key)
+                else:
+                    metadata['processed_keys'] = [rule.key]
 
     def _regexp_replace(self, value, vals):
         self.ensure_one()
@@ -230,16 +237,17 @@ class ExternalDataRule(models.Model):
         return False
 
     def _search_object_link(self, value):
+        # This method returns False instead of None to clear irrelevant values
         self.ensure_one()
         if not self.obj_mapping_id:
-            return None
+            return False
         object_link = self.env['external.data.object'].search([
             ('field_mapping_id', '=', self.obj_mapping_id.id),
             ('foreign_id', '=', value),
         ]).object_link_id
         if object_link:
             return object_link.record_id
-        return None
+        return False
 
     @api.model
     def _eval_expr(self, expr, vals={}, metadata={}):

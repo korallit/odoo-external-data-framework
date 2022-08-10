@@ -12,6 +12,7 @@
 	<field name="model">external.data.object</field>
 	<field name="arch" type="xml">
 	    <tree>
+		<field name="name"/>
 		<field name="foreign_id"/>
 		<field name="data_source_id"/>
 		<field name="field_mapping_id"/>

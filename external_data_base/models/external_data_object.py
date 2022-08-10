@@ -1,7 +1,7 @@
 # coding: utf-8
 
 from datetime import datetime
-from odoo import fields, models
+from odoo import api, fields, models
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -11,13 +11,13 @@ class ExternalDataObject(models.Model):
     _name = 'external.data.object'
     _description = "External Data Object"
 
-    name = fields.Char()  # TODO: compute?
+    name = fields.Char(compute='_compute_name')
     field_mapping_id = fields.Many2one(
         'external.data.field.mapping',
         string="Type mappings",
         required=True,
     )
-    foreign_id = fields.Char(  # TODO: foreign_id
+    foreign_id = fields.Char(
         "Foreign ID",
         help="A unique identifier that helps the CRUD methods "
         "to match the foreign object with an odoo record.",
@@ -75,8 +75,16 @@ class ExternalDataObject(models.Model):
     )
     last_sync = fields.Datetime("Last sync")
 
-    def write_odoo_object(self, vals):
+    def write_odoo_object(self, vals, metadata={}):
         self.ensure_one()
+        processed_keys = metadata.get('processed_keys')
+        if self.field_mapping_id.prune_vals and processed_keys:
+            irrelevant_keys = set(vals.keys()) - set(processed_keys)
+            for key in irrelevant_keys:
+                vals.pop(key)
+        if not vals:
+            return False
+
         self.field_mapping_id.sanitize_values(vals)
         if not self.object_link_id:
             model = self.field_mapping_id.model_id
@@ -124,12 +132,21 @@ class ExternalDataObject(models.Model):
         self.object_link_id = object_link_ids[0]
         return True
 
+    @api.depends('foreign_id')
+    def _compute_name(self):
+        for record in self:
+            name = record.object_link_id.name
+            if name:
+                record.name = name
+            else:
+                record.name = record.foreign_id
+
 
 class ExternalDataObjectLink(models.Model):
     _name = 'external.data.object.link'
     _description = "External Data Object Link"
 
-    name = fields.Char()
+    name = fields.Char(compute='_compute_name')
     model_id = fields.Many2one(
         'ir.model',
         string="Model",
@@ -151,8 +168,15 @@ class ExternalDataObjectLink(models.Model):
         string="External objects",
     )
 
+    @api.depends('model_id', 'record_id')
+    def _compute_name(self):
+        for record in self:
+            related_rec = record._record()
+            if related_rec:
+                record.name = related_rec.display_name
+
     def _record(self):
-        if  not self:
+        if not self:
             return False
         self.ensure_one()
         return self.env[self.model_id.model].browse(self.record_id).exists()

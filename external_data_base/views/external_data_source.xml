@@ -46,9 +46,9 @@
 			    <button string="open" type="object"
 				    name="button_details"
 				    />
-			    <field name="foreign_type"/>
+			    <field name="foreign_type_id"/>
 			    <field name="model_id"/>
-			    <field name="foreign_id_field_type_id"/>
+			    <field name="foreign_id_field_id"/>
 			</tree>
 		    </field>
 		</sheet>
