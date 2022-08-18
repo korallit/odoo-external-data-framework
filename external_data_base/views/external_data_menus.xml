@@ -10,10 +10,10 @@
 	      parent="external_data_menu_parent"
 	      action="external_data_source_action_window"/>
 	      
-    <menuitem id="external_data_menu_packages"
-	      name="Packages"
+    <menuitem id="external_data_menu_resources"
+	      name="Resources"
 	      parent="external_data_menu_parent"
-	      action="external_data_package_action_window"/>
+	      action="external_data_resource_action_window"/>
 
     <menuitem id="external_data_menu_objects"
 	      name="Objects"

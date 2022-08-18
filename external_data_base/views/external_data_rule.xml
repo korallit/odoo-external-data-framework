@@ -35,6 +35,9 @@
 				<field name="sub_repl" style="font-family: monospace;" class="bg-dark text-light"/>
 				<field name="sub_count"/>
 			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'parse_time')]}">
+				<field name="parse_time_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
+			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'lambda')]}">
 				<field name="lambda_str"
 				       style="font-family: monospace;" class="bg-dark text-light"/>

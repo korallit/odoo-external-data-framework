@@ -1,7 +1,6 @@
 # coding: utf-8
-import logging
 import re
-import requests as req
+import requests
 from time import strptime, mktime
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
@@ -9,7 +8,13 @@ from bs4 import BeautifulSoup as bs
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+import logging
 _logger = logging.getLogger(__name__)
+
+# Ignoring pyOpenSSL warnings
+from cryptography.utils import CryptographyDeprecationWarning
+import warnings
+warnings.simplefilter('ignore', category=CryptographyDeprecationWarning)
 
 
 class ExternalDataSourceMelegetHu(models.Model):
@@ -67,7 +72,7 @@ class WebscrapeMelegetHu(models.Model):
         sitemap_url = '/'.join([base_url, 'sitemap.xml'])
 
         # download sitemap and create bs object
-        sitemap = bs(req.get(sitemap_url).text, 'xml')
+        sitemap = bs(requests.get(sitemap_url).text, 'xml')
 
         _logger.info(f"Processing sitemap for {self.base_url}")
         time_pattern = '%Y-%m-%dT%H:%M:%S%z'
@@ -95,7 +100,7 @@ class WebscrapeMelegetHu(models.Model):
         """
 
         # scrape page with BeautifulSoup
-        soup = bs(req.get(url).text, "lxml")
+        soup = bs(requests.get(url).text, "lxml")
         base_url = re.match('https?://[^/]+', url).group()
         data = {}
 

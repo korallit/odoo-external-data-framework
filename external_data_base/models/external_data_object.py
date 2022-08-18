@@ -1,7 +1,12 @@
 # coding: utf-8
 
+import re
+
 from datetime import datetime
 from odoo import api, fields, models
+from odoo.exceptions import MissingError, UserError
+from odoo.fields import Command
+from odoo.tools import image
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -12,10 +17,14 @@ class ExternalDataObject(models.Model):
     _description = "External Data Object"
 
     name = fields.Char(compute='_compute_name')
+    foreign_type_id = fields.Many2one(
+        'external.data.type',
+        string="Foreign type",
+        required=True,
+    )
     field_mapping_id = fields.Many2one(
         'external.data.field.mapping',
         string="Type mappings",
-        required=True,
     )
     foreign_id = fields.Char(
         "Foreign ID",
@@ -23,26 +32,19 @@ class ExternalDataObject(models.Model):
         "to match the foreign object with an odoo record.",
         required=True,
     )
-    field_mapping_model = fields.Char(
-        "Mapped model",
-        related='field_mapping_id.model_id.model',
-        store=True,
-    )
-    object_link_id = fields.Many2one(
+    object_link_id = fields.Many2one(  # TODO: move to ir.model.data
         'external.data.object.link',
         ondelete='set null',
         string="Object link",
     )
-    object_link_record_id = fields.Many2oneReference(
-        "Linked record id",
-        model_field='field_mapping_model',
-        related='object_link_id.record_id',
+    data_source_id = fields.Many2one(
+        'external.data.source',
+        string="Data source",
     )
-    package_ids = fields.Many2many(
-        'external.data.package',
-        string="Data source packages",
+    resource_ids = fields.Many2many(
+        'external.data.resource',
+        string="Resources",
     )
-    data_source_id = fields.Many2one(related='field_mapping_id.data_source_id')
     priority = fields.Integer(default=10)
     rule_ids = fields.One2many(
         'external.data.rule',
@@ -53,84 +55,15 @@ class ExternalDataObject(models.Model):
         'external.data.rule',
         inverse_name='object_id',
         string="Pre rules",
-        domain=[
-            ('direction', '=', 'pull'),
-            ('pre_post', '=', 'pre'),
-        ],
+        domain=[('pre_post', '=', 'pre')],
     )
     rule_ids_post = fields.One2many(
         'external.data.rule',
         inverse_name='object_id',
         string="Post rules",
-        domain=[
-            ('direction', '=', 'pull'),
-            ('pre_post', '=', 'post'),
-        ],
-    )
-    rule_ids_push = fields.One2many(
-        'external.data.rule',
-        inverse_name='object_id',
-        string="Post rules",
-        domain=[('direction', '=', 'push')],
+        domain=[('pre_post', '=', 'post')],
     )
     last_sync = fields.Datetime("Last sync")
-
-    def write_odoo_object(self, vals, metadata={}):
-        self.ensure_one()
-        processed_keys = metadata.get('processed_keys')
-        if self.field_mapping_id.prune_vals and processed_keys:
-            irrelevant_keys = set(vals.keys()) - set(processed_keys)
-            for key in irrelevant_keys:
-                vals.pop(key)
-        if not vals:
-            return False
-
-        self.field_mapping_id.sanitize_values(vals)
-        if not self.object_link_id:
-            model = self.field_mapping_id.model_id
-            record = self.env[model.model].create(vals)
-            object_link = self.object_link_id.create({
-                'model_id': model.id,
-                'record_id': record.id,
-            })
-            self.object_link_id = object_link.id
-        else:
-            record = self.object_link_id._record()
-            record.write(vals)
-        self.last_sync = datetime.now()
-
-    def find_and_set_object_link_id(self):
-        """Tries to find object in other data sources,
-        sets on record if found one, returns boolean."""
-        self.ensure_one()
-        if self.object_link_id:
-            return True
-
-        other_data_source_ids = self.field_mapping_id.relevant_data_source_ids
-        if not other_data_source_ids:
-            return False
-
-        other_field_mappings = self.field_mapping_id.search([
-            ('data_source_id', 'in', other_data_source_ids),
-            ('model_id', '=', self.field_mapping_id.model_id.id)
-        ])
-        if not other_field_mappings:
-            return False
-
-        similar_objects = self.search([
-            ('field_mapping_id', 'in', other_field_mappings.ids)
-        ])
-        if not similar_objects:
-            return False
-
-        object_link_ids = similar_objects.mapped('object_link_id')
-        if len(object_link_ids) > 1:
-            _logger.warning(
-                f"Multiple object links found for object ID {self.id}, "
-                "picking first. Consider manual data consolidation."
-            )
-        self.object_link_id = object_link_ids[0]
-        return True
 
     @api.depends('foreign_id')
     def _compute_name(self):
@@ -140,6 +73,170 @@ class ExternalDataObject(models.Model):
                 record.name = name
             else:
                 record.name = record.foreign_id
+
+    def _record(self):
+        self.ensure_one()
+        if not self.object_link_id:
+            return False
+        res_model = self.object_link_id.model_model
+        res_id = self.object_link_id.record_id
+        return self.env[res_model].browse(res_id).exists()
+
+    def write_odoo_record(self, vals, model_id=False, **kw):
+        self.ensure_one()
+        # getting model
+        if self.object_link_id:
+            model_model = self.object_link_id.model_model
+            self.sanitize_values(vals, model_model)
+            record = self._record()
+            record.write(vals)
+        elif model_id:
+            model = self.field_mapping_id.model_id
+            self.sanitize_values(vals, model.model)
+            record = self.env[model.model].create(vals)
+            object_link = self.object_link_id.create({
+                'model_id': model.id,
+                'record_id': record.id,
+            })
+            self.object_link_id = object_link.id
+        else:
+            raise MissingError(
+                "If no object link, parameter 'model' is mandatory!"
+            )
+        self.last_sync = datetime.now()
+
+    def find_and_set_object_link_id(self, model_id, **kw):
+        """Tries to find object in other data sources by foreign_id,
+        sets on record if found one, returns boolean."""
+
+        # find similar object links
+        similar_type_ids = self.env['external.data.field.mapping'].search([
+            ('data_source_id', '!=', self.data_source_id.id),
+            ('model_id', '=', model_id),
+        ]).mapped('foreign_type_id')
+        object_link_ids = self.env['external.data.object'].search([
+            ('foreign_type_id', 'in', similar_type_ids),
+            ('foreign_id', '=', self.foreign_id),
+        ]).mapped('object_link_id')
+        if not object_link_ids:
+            return False
+
+        if len(object_link_ids) > 1:
+            _logger.warning(
+                f"Multiple object links found for object ID {self.id}, "
+                "picking first. Consider manual data consolidation."
+            )
+        self.object_link_id = object_link_ids[0]
+        return True
+
+    @api.model
+    def sanitize_values(self, vals, model_model, **kw):
+        model = self.env[model_model]
+        fields_data = model.fields_get()
+        fields_keys = list(fields_data.keys())
+        vals_copy = vals.copy()  # can't pop from the iterated dict
+        for key, value in vals_copy.items():
+            # drop irrelevant item
+            if key not in fields_keys:
+                vals.pop(key)
+                continue
+
+            # transform recordset
+            if isinstance(value, models.Model):
+                value = self._recordset_to_int_list(value)
+
+            # check value by type
+            field_data = fields_data[key]
+            ttype = field_data.get('type')
+            if ttype in ['many2one', 'one2many', 'many2many']:
+                self._sanitize_relational(ttype, key, value, vals)
+            elif ttype == 'binary':
+                self._sanitize_binary(model, key, value, vals)
+
+        # check required
+        fields_with_default = model.default_get(fields_keys).keys()
+        for name, data in fields_data.items():
+            conditions = [
+                name not in vals.keys(),
+                data.get('required'),
+                name not in fields_with_default,
+                data.get('type') not in ['one2many', 'many2many'],
+            ]
+            if all(conditions):
+                _logger.warning(
+                    f"Missing required field of model {model_model}: {name}"
+                )
+                return False
+        return True
+
+    @api.model
+    def _sanitize_relational(self, ttype, key, value, vals):
+        if ttype == 'many2one':
+            if isinstance(value, str):
+                try:
+                    vals[key] = int(value)
+                except Exception as e:
+                    _logger.error(e)
+                    vals.pop(key)
+            elif isinstance(value, list) and value:
+                vals[key] = value[0]
+            elif isinstance(value, int) or value is False:
+                vals[key] = value
+            else:
+                vals.pop(key)
+        elif ttype in ['one2many', 'many2many']:
+            # only clear and link is supported
+            if isinstance(value, int):
+                value = [value]
+            elif isinstance(value, str):
+                try:
+                    value = [
+                        int(i) for i in
+                        re.sub(' ', '', value).split(',')
+                    ]
+                except Exception as e:
+                    _logger.error(e)
+
+            if isinstance(value, list):
+                vals[key] = [
+                    Command.link(i) for i in value
+                    if isinstance(i, int)
+                ]
+            elif value is False:
+                vals[key] = [Command.clear()]
+            else:
+                vals.pop(key)
+
+    @api.model
+    def _sanitize_binary(self, model, key, value, vals):
+        model_dict = model.__class__.__dict__
+        field_classname = model_dict[key].__class__.__name__
+        if field_classname == 'Image':
+            if isinstance(value, str) or isinstance(value, bytes):
+                try:
+                    img = image.image_process(value)
+                    vals[key] = img
+                except UserError as e:
+                    _logger.error(e)
+                    vals.pop(key)
+            elif value is False:
+                vals[key] = value
+            else:
+                vals.pop(key)
+        elif field_classname == 'Binary':
+            if isinstance(value, bytes) or value is False:
+                vals[key] = value
+            else:
+                vals.pop(key)
+
+    @api.model
+    def _recordset_to_int_list(self, records):
+        if not bool(records):
+            return False
+        elif len(records) > 1:
+            return records.ids
+        else:
+            return records.id
 
 
 class ExternalDataObjectLink(models.Model):

@@ -1,7 +1,5 @@
 # coding: utf-8
 
-from datetime import datetime
-
 from odoo import api, fields, models
 from odoo.fields import Command
 from odoo.exceptions import MissingError
@@ -15,119 +13,85 @@ class ExternalDataSource(models.Model):
     _description = "External Data Source"
 
     name = fields.Char(required=True)
-    data_source_type_id = fields.Reference(
-        string="Data source type",
-        selection='_selection_data_source_type',
+    list_strategy_id = fields.Many2one(
+        'external.data.strategy',
+        string="List strategy",
+        compute='_compute_list_strategy_id',
     )
-    batch_size = fields.Integer("Batch size", default=10)
-    last_fetch = fields.Datetime("Last fetched")
+    list_strategy_ids = fields.One2many(
+        'external.data.strategy',
+        string="List strategies",
+        inverse_name='data_source_id',
+        domain=[('operation', '=', 'list')],
+    )
+    pull_strategy_ids = fields.One2many(
+        'external.data.strategy',
+        string="Pull strategies",
+        inverse_name='data_source_id',
+        domain=[('operation', '=', 'pull')],
+    )
+    push_strategy_ids = fields.One2many(
+        'external.data.strategy',
+        string="Push strategies",
+        inverse_name='data_source_id',
+        domain=[('operation', '=', 'push')],
+    )
     field_mapping_ids = fields.One2many(
         'external.data.field.mapping',
         inverse_name='data_source_id',
         string="Field mappings",
     )
-    package_ids = fields.One2many(
-        'external.data.package',
+    last_fetch = fields.Datetime("Last fetched")
+    resource_ids = fields.One2many(
+        'external.data.resource',
         inverse_name='data_source_id',
-        string="Packages",
+        string="Resources",
     )
     fetch_limit = fields.Integer(default=0)
 
-    @api.model
-    def _selection_data_source_type(self):
-        return []
-
-    def fetch_package_data(self):
-        self.ensure_one()
-        if not self.data_source_type_id:
-            raise MissingError("Source type is not set!")
-
-        _logger.info(f"Fetching packages from data source {self.name}")
-        packages = self.data_source_type_id.fetch_package_data()
-        # first fetch
-        if not self.last_fetch and not self.package_ids:
-            _logger.info(
-                f"Creating package objects for data source {self.name}"
-            )
-            self.package_ids = [Command.create(p_data) for p_data in packages]
-            self.last_fetch = datetime.now()
-            return True
-
-        # It can be a very long loop, getting object beforehand when possible
-        _logger.info("Syncing package data...")
-        model_package = self.env['external.data.package']
-        self_id = self.id
-        self_name = self.name
-        data_source_type = self.data_source_type_id
-        last_fetch = self.last_fetch
-        new_packages = []
-        i = 0
-        limit = self.fetch_limit
-        for p_data in packages:
-            i += 1
-            # Don't process old data
-            last_mod = p_data.get('last_mod')
-            if not last_mod:
-                continue
-
-            p_name = p_data.get('name')
-            if not p_name:
-                p_name = data_source_type.get_package_name(p_data)
-
-            package = model_package.search([
-                ('data_source_id', '=', self_id),
-                ('name', '=', p_name),
-                ('last_mod', '!=', last_mod),
-            ], limit=1)
-            # TODO: deduplication later...
-            if package:
-                msg = "Updating package object #{nr} of data source {ds}: {p}"
-                _logger.info(msg.format(nr=i, ds=self_name, p=p_name))
-                package.write(p_data)
+    @api.depends('list_strategy_ids')
+    def _compute_list_strategy_id(self):
+        for ds in self:
+            if ds.list_strategy_ids:
+                ds.list_strategy_id = ds.list_strategy_ids[0].id
             else:
-                new_packages.append(p_data)
-            if i == limit:
-                break
+                ds.list_strategy_id = False
 
-        self.package_ids = [Command.create(p_data) for p_data in new_packages]
-        self.last_fetch = datetime.now()
-        return True
-
-    def pull_package(self, package_id):
+    def list(self):
         self.ensure_one()
-        package = self.package_ids.browse(package_id)
-        if not package.exists():
-            raise MissingError(f"Package with ID {package_id} doesn't exist")
-        if not self.data_source_type_id:
-            raise MissingError("Source type is not set!")
-        if not hasattr(self.data_source_type_id, 'pull_package'):
-            raise MissingError(
-                "Pull is not available for data source "
-                f"type '{self.data_source_type_id.name}'"
-            )
-        return self.data_source_type_id.pull_package(package.name)
+        if self.list_strategy_id:
+            self.list_strategy_id.list()
+        else:
+            raise MissingError("No list strategy defined")
 
-    def batch_pull(self, filter_lambda=None, sync=False, prune=False):
-        packages = self.package_ids.filtered(
+    def batch_pull(self, strategy_id=False, sync=False, prune=False):
+        res_ids = self.resource_ids.filtered(
             lambda p: not p.skip and (
                 not p.last_pull or
                 (p.last_mod and p.last_pull and p.last_mod > p.last_pull)
                 # TODO: or (not p.last_mod and p.last_pull + week < now)
             )
-        )
-        if callable(filter_lambda):
-            packages = packages.filtered(filter_lambda)
-        return packages.batch_pull(
-            batch_size=self.batch_size,
-            sync=sync, prune=prune,
-        )
+        ).ids
+        # getting strategy
+        strategy = self.env['external.data.strategy']
+        if strategy_id:
+            strategy = strategy.browse(strategy_id)
+        if not strategy.exists():
+            strategy = strategy.get_strategy(
+                operation='pull',
+                data_source_id=self.id,
+            )
+
+        if strategy:
+            strategy.batch_pull(res_ids, do_all=True, sync=sync, prune=prune)
 
 
-class ExternalDataPackage(models.Model):
-    _name = 'external.data.package'
-    _description = "External Data Package"
+class ExternalDataResource(models.Model):
+    _name = 'external.data.resource'
+    _description = "External Data Resource"
 
     name = fields.Char(required=True)
+    url = fields.Char(required=True)
     priority = fields.Float("Priority")
     skip = fields.Boolean()
     notes = fields.Text()
@@ -141,9 +105,9 @@ class ExternalDataPackage(models.Model):
         string="Data source",
         required=True,
     )
-    field_mapping_ids = fields.Many2many(
-        comodel_name='external.data.field.mapping',
-        string="Type mappings",
+    foreign_type_ids = fields.Many2many(
+        comodel_name='external.data.type',
+        string="Foreign types",
     )
     object_ids = fields.Many2many(
         comodel_name='external.data.object',
@@ -155,100 +119,41 @@ class ExternalDataPackage(models.Model):
         for record in self:
             record.skip = not record.skip
 
-    def batch_pull(self, sync=False, prune=False, batch_size=1, do_all=False):
-        res = []
-        i = 0
-        for package in self:
-            try:
-                res.append(package.pull(sync=sync, prune=prune))
-            except Exception as e:
-                _logger.error(e)
-                package.notes = ("Pull error:\n" + str(e))
-                package.skip = True
-            i += 1
-            if i == batch_size and not do_all:
-                break
-        return res
-
-    def pull(self, sync=False, prune=False):
+    # move all operation logic to strategies
+    def pull(self, strategy_id=False, sync=False, prune=False):
         self.ensure_one()
-        _logger.info(f"Pulling package {self.name}")
-        dataset = self.data_source_id.pull_package(self.id)
+        strategy = self.env['external.data.strategy']
+        if strategy_id:
+            strategy = strategy.browse(strategy_id)
+        if not strategy.exists():
+            if self.env['external.data.field.mapping'].search_count([
+                ('model_id.model', '=', 'external.data.resource'),
+                ('data_source_id', '=', self.data_source_id.id),
+                ('foreign_type_id', 'in', self.foreign_type_ids.ids),
+            ]):
+                operation = 'list'
+                _logger.warning("Found list field mapping, switch to listing.")
+            else:
+                operation = 'pull'
 
-        # find foreign_types
-        found_foreign_type_names = list(dataset.keys())
-        field_mappings = self.field_mapping_ids.search([
-            ('data_source_id', '=', self.data_source_id.id),
-            ('foreign_type_id.name', 'in', found_foreign_type_names),
-        ])
-        if field_mappings:
-            self.field_mapping_ids = [Command.set(field_mappings.ids)]
+            strategy = strategy.get_strategy(
+                operation=operation,
+                resource_ids=self.ids,
+            )
+        if strategy:
+            strategy.pull_resource(self.id, sync=sync, prune=prune)
 
-        metadata = {
-            'package_id': self.id,
-            'direction': 'pull',
-        }
-        foreign_objects = []
-        for field_mapping in field_mappings:
-            foreign_type = field_mapping.foreign_type_id.name
-            foreign_id_key = field_mapping.foreign_id_field_id.name
-            index = 0
-            for data in dataset[foreign_type]:
-                index += 1
-                foreign_id = data.get(foreign_id_key)
-                if not foreign_id:
-                    _logger.error(
-                        f"Missing foreign ID from package {self.name}"
-                    )
-                    continue
-                foreign_objects.append((foreign_id, field_mapping.id))
-                if not sync:
-                    continue
-
-                # get external_object
-                external_object = self.object_ids.search([
-                    ('field_mapping_id', '=', field_mapping.id),
-                    ('foreign_id', '=', foreign_id),
-                ], limit=1)
-                if not external_object:
-                    external_object = self.object_ids.create({
-                        'field_mapping_id': field_mapping.id,
-                        'foreign_id': foreign_id,
-                        'priority': index,
-                    })
-                    external_object.find_and_set_object_link_id()
-                if self.id not in external_object.package_ids.ids:
-                    external_object.package_ids = [Command.link(self.id)]
-
-                # pre processing
-                metadata.update({
-                    'field_mapping_id': field_mapping.id,
-                    'foreign_type': foreign_type,
-                    'foreign_id': foreign_id,
-                    'record': external_object.object_link_id._record(),
-                    'pre_post': 'pre',
-                })
-                vals = field_mapping.apply_mapping(data, metadata)
-                field_mapping.rule_ids_pre.apply_rules(vals, metadata)
-                external_object.rule_ids_pre.apply_rules(vals, metadata)
-                external_object.write_odoo_object(vals, metadata)
-
-                # post processing
-                metadata.update({
-                    'record': external_object.object_link_id._record(),
-                    'pre_post': 'post',
-                })
-                vals = field_mapping.apply_mapping(data, metadata)
-                field_mapping.rule_ids_post.apply_rules(vals, metadata)
-                external_object.rule_ids_post.apply_rules(vals, metadata)
-                external_object.write_odoo_object(vals, metadata)
-
-                self.last_pull = datetime.now()
-
-        if prune:
-            self.prune_objects(foreign_objects)
-
-        return dataset
+    def batch_pull(self, strategy_id=False, sync=False, prune=False):
+        strategy = self.env['external.data.strategy']
+        if strategy_id:
+            strategy = strategy.browse(strategy_id)
+        if not strategy.exists():
+            strategy = strategy.get_strategy(
+                operation='pull',
+                resource_ids=self.ids,
+            )
+        if strategy:
+            strategy.batch_pull(self.ids, do_all=True, sync=sync, prune=prune)
 
     def prune_objects(self, foreign_objects):
         self.ensure_one()
@@ -267,7 +172,7 @@ class ExternalDataPackage(models.Model):
         res_id = self.env.context.get('default_res_id')
         return {
             "type": "ir.actions.act_window",
-            "res_model": "external.data.package",
+            "res_model": "external.data.resource",
             "views": [[False, "form"]],
             "res_id": res_id,
         }

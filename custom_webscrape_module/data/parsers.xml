@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- sitemap.xml -->
+    <record model="external.data.serializer" id="external_data_parser_sitemap">
+	<field name="name">sitemap.xml</field>
+	<field name="engine">lxml_etree</field>
+    </record>
+    <record model="external.data.parser.line" id="external_data_parser_sitemap_url">
+	<field name="sequence">1</field>
+	<field name="serializer_id" ref="external_data_parser_sitemap"/>
+	<field name="parent_id"/>
+	<field name="foreign_type_id" ref="meleget_hu_foreign_type_sitemap"/>
+	<field name="path_type">findall</field>
+	<field name="path">url</field>
+    </record>
+    <record model="external.data.parser.line" id="external_data_parser_sitemap_url_loc">
+	<field name="sequence">1</field>
+	<field name="serializer_id" ref="external_data_parser_sitemap"/>
+	<field name="parent_id" ref="external_data_parser_sitemap_url"/>
+	<field name="foreign_type_id" ref="meleget_hu_foreign_type_sitemap"/>
+	<field name="foreign_field_id" ref="meleget_hu_foreign_type_sitemap_field_loc"/>
+	<field name="path_type">find</field>
+	<field name="path">loc</field>
+	<field name="extract_method">text</field>
+	<field name="extract_param"></field>
+    </record>
+    <record model="external.data.parser.line" id="external_data_parser_sitemap_url_lastmod">
+	<field name="sequence">3</field>
+	<field name="serializer_id" ref="external_data_parser_sitemap"/>
+	<field name="parent_id" ref="external_data_parser_sitemap_url"/>
+	<field name="foreign_type_id" ref="meleget_hu_foreign_type_sitemap"/>
+	<field name="foreign_field_id" ref="meleget_hu_foreign_type_sitemap_field_lastmod"/>
+	<field name="path_type">find</field>
+	<field name="path">lastmod</field>
+	<field name="extract_method">text</field>
+	<field name="extract_param"></field>
+    </record>
+    <record model="external.data.parser.line" id="external_data_parser_sitemap_url_priority">
+	<field name="sequence">2</field>
+	<field name="serializer_id" ref="external_data_parser_sitemap"/>
+	<field name="parent_id" ref="external_data_parser_sitemap_url"/>
+	<field name="foreign_type_id" ref="meleget_hu_foreign_type_sitemap"/>
+	<field name="foreign_field_id" ref="meleget_hu_foreign_type_sitemap_field_priority"/>
+	<field name="path_type">find</field>
+	<field name="path">priority</field>
+	<field name="extract_method">text</field>
+	<field name="extract_param"></field>
+    </record>
+
+    <!-- meleget.hu -->
+    <record model="external.data.serializer" id="external_data_parser_meleget_hu">
+	<field name="name">meleget.hu parser</field>
+	<field name="engine">bs</field>
+    </record>
+    <!-- <record model="external.data.parser.line" id="external_data_parser_meleget_hu_"> -->
+    <!-- 	<field name="sequence"></field> -->
+    <!-- 	<field name="parent_id"/> -->
+    <!-- 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_"/> -->
+    <!-- 	<field name="foreign_field_id" ref="meleget_hu_foreign_type__field_"/> -->
+    <!-- 	<field name="path_type"></field> -->
+    <!-- 	<field name="path"></field> -->
+    <!-- 	<field name="extract_method"></field> -->
+    <!-- 	<field name="extract_param"></field> -->
+    <!-- </record> -->
+
+</odoo>

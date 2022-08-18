@@ -1,6 +1,11 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_external_data_source,external_data_source,model_external_data_source,base.group_user,1,1,1,1
-access_external_data_package,external_data_package,model_external_data_package,base.group_user,1,1,1,1
+access_external_data_credential,external_data_credential,model_external_data_credential,base.group_user,1,1,1,1
+access_external_data_transporter,external_data_transporter,model_external_data_transporter,base.group_user,1,1,1,1
+access_external_data_serializer,external_data_serializer,model_external_data_serializer,base.group_user,1,1,1,1
+access_external_data_parser_line,external_data_parser_line,model_external_data_parser_line,base.group_user,1,1,1,1
+access_external_data_strategy,external_data_strategy,model_external_data_strategy,base.group_user,1,1,1,1
+access_external_data_resource,external_data_resource,model_external_data_resource,base.group_user,1,1,1,1
 access_external_data_object,external_data_object,model_external_data_object,base.group_user,1,1,1,1
 access_external_data_object_link,external_data_object_link,model_external_data_object_link,base.group_user,1,1,1,1
 access_external_data_field_mapping,external_data_field_mapping,model_external_data_field_mapping,base.group_user,1,1,1,1

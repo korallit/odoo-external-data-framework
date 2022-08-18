@@ -16,10 +16,10 @@
 		<sheet>
 		    <group>
 			<field name="name"/>
+			<field name="data_source_id"/>
 			<field name="foreign_type_id"/>
 			<field name="foreign_id_field_id"/>
 			<field name="model_id"/>
-			<field name="prune_vals"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">
@@ -32,8 +32,8 @@
 			</tree>
 		    </field>
 		    <notebook>
-			<page string="Processing pulled data">
-			    <separator string="Pre write rules"/>
+			<page string="Processing rules">
+			    <separator string="Pre"/>
 			    <field name="rule_ids_pre"
 				   context="{'default_field_mapping_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
 				<tree>
@@ -57,7 +57,7 @@
 				    </control>
 				</tree>
 			    </field>
-			    <separator string="Post write rules"/>
+			    <separator string="Post"/>
 			    <field name="rule_ids_post"
 				   context="{'default_field_mapping_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
 				<tree>
@@ -79,34 +79,6 @@
 							 }"
 						/>
 				    </control>
-				</tree>
-			    </field>
-			</page>
-			<page string="Processing pushed data">
-			    <field name="rule_ids_push"
-				   context="{'default_field_mapping_id': id, 'default_direction': 'push'}">
-				<tree>
-				    <field name="sequence" widget="handle"/>
-				    <field name="name"/>
-				    <field name="key"/>
-				    <field name="operation" widget="selection"/>
-				    <field name="condition"/>
-				    <control>
-					<create string="Add a rule"/>
-					<create string="Add a default rule"
-						context="{
-							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
-							 }"
-						/>
-				    </control>
-				</tree>
-			    </field>
-			</page>
-			<page string="Relevant data sources">
-			    <field name="data_source_id_id" invisible="1"/>
-			    <field name="relevant_data_source_ids">
-				<tree>
-				    <field name="name"/>
 				</tree>
 			    </field>
 			</page>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- sitemap -->
+    <record model="external.data.type" id="meleget_hu_foreign_type_sitemap">
+	<field name="name">sitemap.xml</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_loc">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_sitemap"/>
+	<field name="name">loc</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_lastmod">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_sitemap"/>
+	<field name="name">lastmod</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_changefreq">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_sitemap"/>
+	<field name="name">changefreq</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_priority">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_sitemap"/>
+	<field name="name">priority</field>
+    </record>
+
+    <!-- product -->
+    <record model="external.data.type" id="meleget_hu_foreign_type_product">
+	<field name="name">product</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_sku">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">sku</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_name">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">name</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_description">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">description</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_brand">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">brand</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_image">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">image</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_category_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">category_href</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_price">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">price</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_pricecurrency">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">pricecurrency</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_availability">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">availability</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_category">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">category</field>
+    </record>
+
+    <!-- category -->
+    <record model="external.data.type" id="meleget_hu_foreign_type_category">
+	<field name="name">category</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_name">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">name</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">href</field>
+    </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_parent_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="name">parent_href</field>
+    </record>
+
+</odoo>

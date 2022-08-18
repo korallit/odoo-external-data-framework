@@ -1,15 +1,24 @@
 # coding: utf-8
 
 import re
+import requests
+from base64 import b64encode
+from time import strptime, mktime
+from datetime import datetime
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+# may be used in user input
+from datetime import datetime
+
+from cryptography.utils import CryptographyDeprecationWarning
+import warnings
 import logging
 _logger = logging.getLogger(__name__)
 
-# may be used in user input
-from datetime import datetime
+# Ignoring pyOpenSSL warnings
+warnings.simplefilter('ignore', category=CryptographyDeprecationWarning)
 
 
 class ExternalDataRule(models.Model):
@@ -25,12 +34,6 @@ class ExternalDataRule(models.Model):
     key = fields.Char(
         "Key/Field",
         required=True,
-    )
-    direction = fields.Selection(
-        string="Direction",
-        selection=[('pull', 'pull'), ('push', 'push')],
-        required=True,
-        default='pull',
     )
     pre_post = fields.Selection(
         string="Pre/Post",
@@ -54,12 +57,13 @@ class ExternalDataRule(models.Model):
             ('exclude', "exclude"),
             ('clear', "clear"),
             ('replace', "regexp replace"),
+            ('parse_time', "Parse time"),
             ('lambda', "lambda"),
             ('eval', "eval"),
             ('orm_ref', "ORM external ID"),
             ('orm_expr', "ORM expression"),
             ('object_link', "Object link"),
-            # TODO: ('fetch_binary', "Fetch binary"),
+            ('fetch_binary', "Fetch binary"),
         ],
         required=True,
     )
@@ -69,6 +73,7 @@ class ExternalDataRule(models.Model):
             ('exclude', "Pops value from 'vals' dictionary."),
             ('clear', "Set value to 'False'"),
             ('replace', "Replace value with re.sub(pattern, repl, count)"),
+            ('parse_time', "Parse time by pattern with time.strptime"),
             (
                 'lambda',
                 "lambda expression evaluated to value ('v' in input)."
@@ -85,8 +90,12 @@ class ExternalDataRule(models.Model):
                 "model.search(domain, limit).filtered(lmabda).field"
             ),
             (
-                'object_link', "Search a linked external object by "
+                'object_link', "Searches a linked external object by "
                 "data source, mapping and value as foreign ID."
+            ),
+            (
+                'fetch_binary', "Fetches a binary from URL and "
+                "encodes it to base64 byte object"
             ),
         ],
         readonly=True,
@@ -95,6 +104,7 @@ class ExternalDataRule(models.Model):
     sub_pattern = fields.Char()
     sub_repl = fields.Char()
     sub_count = fields.Integer()
+    parse_time_pattern = fields.Char("pattern")
     lambda_str = fields.Char("lambda v:")
     eval_str = fields.Char("eval")
     orm_ref = fields.Char("ORM external ID")
@@ -153,6 +163,8 @@ class ExternalDataRule(models.Model):
                 result = False
             elif rule.operation == 'replace':
                 result = rule._regexp_replace(value, vals)
+            elif rule.operation == 'parse_time':
+                result = rule._parse_time(value)
             elif rule.operation == 'lambda' and rule.lambda_str:
                 if rule.lambda_str:
                     lambda_str = f"lambda v: {rule.lambda_str}"
@@ -169,6 +181,8 @@ class ExternalDataRule(models.Model):
                 result = rule._orm_expr(value, vals)
             elif rule.operation == 'object_link':
                 result = rule._search_object_link(value)
+            elif rule.operation == 'fetch_binary':
+                result = rule._fetch_binary(value)
 
             if not isinstance(result, type(None)):
                 vals[rule.key] = result
@@ -185,6 +199,13 @@ class ExternalDataRule(models.Model):
         repl = self.sub_repl.format(**vals) if self.sub_repl else ''
         count = int(self.sub_count)  # converts False to 0
         return re.sub(pattern, repl, value, count=count)
+
+    def _parse_time(self, value):
+        self.ensure_one()
+        if not (value and self.parse_time_pattern):
+            return None
+        ts = mktime(strptime(value, self.parse_time_pattern))
+        return datetime.fromtimestamp(ts)
 
     def _orm_expr(self, value, vals):
         self.ensure_one()
@@ -274,3 +295,17 @@ class ExternalDataRule(models.Model):
                 _logger.error(f"Failed to evaluate lambda: {lambda_str}")
                 return False
         return False
+
+    @api.model
+    def _fetch_binary(self, url):
+        if not isinstance(url, str):
+            _logger.error(f"Invalid URL: {url}")
+            return None
+        try:
+            res = requests.get(url)
+        except Exception as e:
+            _logger.error(e)
+            return None
+        if isinstance(res.content, bytes):
+            return b64encode(res.content)
+        return None

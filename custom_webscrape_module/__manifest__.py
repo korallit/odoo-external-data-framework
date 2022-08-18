@@ -21,12 +21,15 @@
 
     # always loaded
     'data': [
-        'security/ir.model.access.csv',
+        # 'security/ir.model.access.csv',
         # 'views/views.xml',
         # 'views/templates.xml',
         # 'views/webscrape.xml',
         # 'actions/webscrape.xml',
         'data/meleget_hu.xml',
+        'data/foreign_data_types.xml',
+        'data/parsers.xml',
+        'data/data_source.xml',
         'data/field_mappings.xml',
     ],
 }

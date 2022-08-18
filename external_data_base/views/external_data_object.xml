@@ -15,7 +15,7 @@
 		<field name="name"/>
 		<field name="foreign_id"/>
 		<field name="data_source_id"/>
-		<field name="field_mapping_id"/>
+		<field name="foreign_type_id"/>
 	    </tree>
 	</field>
     </record>
@@ -28,22 +28,22 @@
 		<group>
 		    <field name="foreign_id"/>
 		    <field name="data_source_id"/>
-		    <field name="field_mapping_id"/>
+		    <field name="foreign_type_id"/>
 		    <field name="object_link_id"/>
 		</group>
 		<notebook>
-		    <page string="Packages">
-			<field name="package_ids">
+		    <page string="Resources">
+			<field name="resource_ids">
 			    <tree>
-				<field name="name"/>
+				<field name="url"/>
 				<button string="open" type="object"
 					name="button_open"
 					context="{'default_res_id': active_id}"/>
 			    </tree>
 			</field>
 		    </page>
-		    <page string="Processing pulled data">
-			<separator string="Pre write rules"/>
+		    <page string="Processing rules">
+			<separator string="Pre"/>
 			<field name="rule_ids_pre"
 			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
 			    <tree>
@@ -67,7 +67,7 @@
 				</control>
 			    </tree>
 			</field>
-			<separator string="Post write rules"/>
+			<separator string="Post"/>
 			<field name="rule_ids_post"
 			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
 			    <tree>
@@ -83,26 +83,6 @@
 						     'default_condition': 'metadata.get(\'record\')',
 						     }"
 					    />
-				    <create string="Add a default rule"
-					    context="{
-						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
-						     }"
-					    />
-				</control>
-			    </tree>
-			</field>
-		    </page>
-		    <page string="Processing pushed data">
-			<field name="rule_ids_push"
-			       context="{'default_object_id': id, 'default_direction': 'push'}">
-			    <tree>
-				<field name="sequence" widget="handle"/>
-				<field name="name"/>
-				<field name="key"/>
-				<field name="operation" widget="selection"/>
-				<field name="condition"/>
-				<control>
-				    <create string="Add a rule"/>
 				    <create string="Add a default rule"
 					    context="{
 						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
