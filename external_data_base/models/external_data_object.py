@@ -68,9 +68,9 @@ class ExternalDataObject(models.Model):
     @api.depends('foreign_id')
     def _compute_name(self):
         for record in self:
-            name = record.object_link_id.name
-            if name:
-                record.name = name
+            related_rec = record._record()
+            if related_rec:
+                record.name = related_rec.display_name
             else:
                 record.name = record.foreign_id
 
@@ -82,7 +82,8 @@ class ExternalDataObject(models.Model):
         res_id = self.object_link_id.record_id
         return self.env[res_model].browse(res_id).exists()
 
-    def write_odoo_record(self, vals, model_id=False, **kw):
+    def write_odoo_record(self, vals,
+                          model_id=False, model_model=False, **kw):
         self.ensure_one()
         # getting model
         if self.object_link_id:
@@ -90,15 +91,19 @@ class ExternalDataObject(models.Model):
             self.sanitize_values(vals, model_model)
             record = self._record()
             record.write(vals)
-        elif model_id:
-            model = self.field_mapping_id.model_id
-            self.sanitize_values(vals, model.model)
-            record = self.env[model.model].create(vals)
-            object_link = self.object_link_id.create({
-                'model_id': model.id,
-                'record_id': record.id,
-            })
-            self.object_link_id = object_link.id
+        elif model_id and model_model:
+            if self.sanitize_values(vals, model_model):
+                record = self.env[model_model].create(vals)
+                object_link = self.object_link_id.create({
+                    'model_id': model_id,
+                    'record_id': record.id,
+                })
+                self.object_link_id = object_link.id
+            else:
+                _logger.error(
+                    "Provided values are not enough "
+                    f"for creating a record in model {model_model}"
+                )
         else:
             raise MissingError(
                 "If no object link, parameter 'model' is mandatory!"

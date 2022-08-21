@@ -69,6 +69,14 @@ class ExternalDataTransporter(models.Model):
         ],
         default='GET',
     )
+    content_type = fields.Selection(
+        string="Content type",
+        selection=[
+            ('binary', "binary"),
+            ('text', "text"),
+        ],
+        default='binary',
+    )
 
     def fetch(self, resource_id):
         self.ensure_one()
@@ -88,17 +96,27 @@ class ExternalDataTransporter(models.Model):
         pass
 
     def _fetch_http(self, resource):
+        self.ensure_one()
         ses = Session()
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
         if res.status_code == 200:
-            return res.content
+            if self.content_type == 'binary':
+                return res.content
+            elif self.content_type == 'text':
+                return res.text
         return False
 
     def _fetch_local_fs(self, resource):
+        self.ensure_one()
         # TODO: check whether file or directory
+        if self.content_type == 'binary':
+            mode = 'rb'
+        elif self.content_type == 'text':
+            mode = 'r'
         try:
-            return open(resource.url, 'rb')
+            reader = open(resource.url, mode)
+            return reader.read()
         except Exception as e:
             _logger.error(e)

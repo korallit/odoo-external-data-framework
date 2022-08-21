@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Window actions -->
-    <record id="external_data_serializer_action_window" model="ir.actions.act_window">
-	<field name="name">External Data Serializer</field>
-	<field name="res_model">external.data.serializer</field>
-    </record>
-
     <!-- Views -->
     <record id="external_data_serializer_list_view" model="ir.ui.view">
 	<field name="name">External Data serializers</field>
@@ -24,6 +18,14 @@
 	<field name="arch" type="xml">
 	    <form>
 		<sheet>
+		    <div class="oe_button_box" name="button_box">
+			<button class="oe_stat_button"
+				type="object"
+				name="list_parser_lines"
+				icon="fa-gears">
+			    <field name="parser_line_count" widget="statinfo"/>
+			</button>
+		    </div>
 		    <group>
 			<field name="name"/>
 			<field name="engine"/>
@@ -50,6 +52,24 @@
 	</field>
     </record>
     
+    <record id="external_data_parser_line_list_view" model="ir.ui.view">
+	<field name="name">External Data Parser Directives</field>
+	<field name="model">external.data.parser.line</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="sequence" widget="handle"/>
+		<field name="engine"/>
+		<field name="parent_id"/>
+		<field name="foreign_type_id"/>
+		<field name="foreign_field_id"/>
+		<field name="path_type"/>
+		<field name="path"/>
+		<field name="extract_method"/>
+		<field name="extract_param"/>
+	    </tree>
+	</field>
+    </record>
+
     <record id="external_data_parser_line_form_view" model="ir.ui.view">
 	<field name="name">External Data Parser Directive</field>
 	<field name="model">external.data.parser.line</field>
@@ -90,6 +110,18 @@
 		</sheet>
 	    </form>
 	</field>
+    </record>
+
+    <!-- Window actions -->
+    <record id="external_data_serializer_action_window" model="ir.actions.act_window">
+	<field name="name">External Data Serializer</field>
+	<field name="res_model">external.data.serializer</field>
+    </record>
+
+    <record id="external_data_parser_line_action_window" model="ir.actions.act_window">
+	<field name="name">External Data Parser Directives</field>
+	<field name="res_model">external.data.parser.line</field>
+	<field name="view_mode">tree,form</field>
     </record>
 
 </odoo>

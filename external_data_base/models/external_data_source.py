@@ -47,6 +47,11 @@ class ExternalDataSource(models.Model):
         inverse_name='data_source_id',
         string="Resources",
     )
+    object_ids = fields.One2many(
+        'external.data.object',
+        inverse_name='data_source_id',
+        string="Objects",
+    )
     fetch_limit = fields.Integer(default=0)
 
     @api.depends('list_strategy_ids')

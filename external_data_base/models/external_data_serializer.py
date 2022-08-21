@@ -6,6 +6,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import etree
 from bs4 import BeautifulSoup
+from bs4 import element as bs_element
+from urllib.parse import parse_qsl
+
+from ..tools import bs
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -33,6 +37,9 @@ class ExternalDataSerializer(models.Model):
         string="Directives",
         domain="[('engine', '=', engine)]",
     )
+    parser_line_count = fields.Integer(
+        compute='_compute_parser_line_count',
+    )
     packaging = fields.Selection(
         selection=[
             ('tar', "tar"),
@@ -50,6 +57,25 @@ class ExternalDataSerializer(models.Model):
         'external.data.credential',
         string="Credentials",
     )
+
+    @api.depends('parser_line_ids')
+    def _compute_parser_line_count(self):
+        for record in self:
+            record.parser_line_count = record.parser_line_ids.search_count([
+                ('serializer_id', '=', self.id)])
+
+    def list_parser_lines(self):
+        self.ensure_one()
+        form_view_id = self.env.ref(
+            "external_data_base.external_data_parser_line_form_view").id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Parser directives',
+            'view_mode': 'tree',
+            'views': [(False, 'tree'), (form_view_id, 'form')],
+            'res_model': 'external.data.parser.line',
+            'domain': [('serializer_id', '=', self.id)],
+        }
 
     def decrypt(self, data):
         return data
@@ -106,6 +132,7 @@ class ExternalDataParserLine(models.Model):
             ('schema_org', "Schema.org"),
             ('find', "find"),
             ('findall', "findall"),
+            ('children', "children"),
             ('prev', "previous"),
             ('next', "next"),
             ('jmespath', "JMESPath"),
@@ -121,6 +148,7 @@ class ExternalDataParserLine(models.Model):
             ('tag', "tag"),
             ('attr', "attribute"),
             ('tostring', "tostring"),
+            ('index', "index (nth of)"),
         ],
     )
     extract_param = fields.Char("Extract param")
@@ -206,7 +234,7 @@ class ExternalDataParserLine(models.Model):
                     )
                     child_rules = child_rules[0]
                 vals, generator, gen_rule_id = rule.child_ids.get_object_data(
-                    new_data, vals,
+                    foreign_type_id, new_data, vals,
                 )
             elif rule.foreign_field_id and rule.extract_method:
                 field_id = rule.foreign_field_id.name
@@ -225,6 +253,11 @@ class ExternalDataParserLine(models.Model):
         if self.engine == 'lxml_etree':
             data_prep = self._prepare_lxml_etree(data)
             return self._execute_lxml_etree(data_prep)
+        if self.engine == 'bs':
+            data_prep = self._prepare_bs(data)
+            return self._execute_bs(data_prep)
+        else:
+            raise ValidationError("Engine is not supported yet")
 
     def _execute_lxml_etree(self, data):
         if data is None:
@@ -266,18 +299,51 @@ class ExternalDataParserLine(models.Model):
         if data is None:
             return None
         self.ensure_one()
-        path = self.path
+
+        name = False
+
+        attrs = dict(parse_qsl(self.path))
+        if not attrs:
+            name = self.path
+            attrs = {}
+
+        attrs_not = {}
+        for key in attrs.copy().keys():
+            if key[0] == '-':
+                attrs_not[key[1:]] = attrs.pop(key)
+
+        recursive =  self.path_type == 'children'
+        index = start = end = None
+        if self.extract_method == 'index':
+            index_str = self.extract_param
+            index_split = index_str.split(':')
+            if len(index_split) == 2:
+                start = bs.get_index(index_split[0])
+                end = bs.get_index(index_split[1])
+            index = bs.get_index(index_str)
+
         if self.path_type == 'find':
-            chunk = data.find(path)
-        elif self.path_type == 'findall':
-            chunk = (d for d in data.find_all(path))
-        if self.path_type == 'prev':
-            chunk = data.find_previous(path)
-        if self.path_type == 'next':
-            chunk = data.find_next(path)
+            chunk = data.find(name=name, attrs=attrs)
+        elif self.path_type in ['next', 'prev']:
+            direction = self.path_type
+            gen = bs.findall(data, name, attrs, attrs_not,
+                             direction=direction)
+            try:
+                chunk = next(gen)
+            except StopIteration:
+                return None
+        elif self.path_type in ['children', 'findall']:
+            if index:
+                chunk = data.find_all(name=name, attrs=attrs)[index]
+            else:
+                chunk = bs.findall(data, name, attrs, attrs_not,
+                                   recursive=recursive, start=start, end=end)
         else:
             return None
 
+        if attrs_not and isinstance(chunk, bs_element.Tag):
+            if not bs.compute_conditions(chunk, attrs_not=attrs_not):
+                return None
         if chunk is None:
             return None
 
@@ -323,7 +389,7 @@ class ExternalDataParserLine(models.Model):
 
     @api.model
     def _prepare_bs(self, data):
-        if isinstance(data, BeautifulSoup):
+        if isinstance(data, (BeautifulSoup, bs_element.Tag)):
             return data
         elif isinstance(data, BufferedReader):
             data.seek(0)

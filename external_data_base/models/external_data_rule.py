@@ -180,7 +180,7 @@ class ExternalDataRule(models.Model):
             elif rule.operation == 'orm_expr':
                 result = rule._orm_expr(value, vals)
             elif rule.operation == 'object_link':
-                result = rule._search_object_link(value)
+                result = rule._search_object_link(value, **metadata)
             elif rule.operation == 'fetch_binary':
                 result = rule._fetch_binary(value)
 
@@ -257,16 +257,16 @@ class ExternalDataRule(models.Model):
                 return domain
         return False
 
-    def _search_object_link(self, value):
+    def _search_object_link(self, value, foreign_type_id=None, **kw):
         # This method returns False instead of None to clear irrelevant values
         self.ensure_one()
-        if not self.obj_mapping_id:
+        if not foreign_type_id:
             return False
         object_link = self.env['external.data.object'].search([
-            ('field_mapping_id', '=', self.obj_mapping_id.id),
+            ('foreign_type_id', '=', foreign_type_id),
             ('foreign_id', '=', value),
         ]).object_link_id
-        if object_link:
+        if object_link:  # TODO: check if multiple (=garbage) found
             return object_link.record_id
         return False
 

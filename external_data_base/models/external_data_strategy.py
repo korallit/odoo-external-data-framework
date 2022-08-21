@@ -152,10 +152,7 @@ class ExternalDataStrategy(models.Model):
             'strategy_name': self.name,
             'parser_id': parser.id,
         }
-        ext_object_vals = {
-            'data_source_id': data_source.id,
-            'resource_ids': [Command.link(resource_id)],
-        }
+        data_source_objects = data_source.object_ids
         object_data_generators = parser.parse(raw_data)
         foreign_objects = []
         for field_mapping in self.field_mapping_ids:
@@ -176,7 +173,12 @@ class ExternalDataStrategy(models.Model):
                 'now': datetime.now(),
                 'record': False,
             })
-            external_objects = resource.object_ids.filtered(
+            ext_object_vals = {
+                'data_source_id': data_source.id,
+                'foreign_type_id': foreign_type.id,
+                'resource_ids': [Command.link(resource_id)],
+            }
+            external_objects = data_source_objects.filtered(
                 lambda o: o.foreign_type_id.id == foreign_type.id
             )
             deferred_create_data = {'vals': [], 'data': [], 'object_vals': []}
@@ -262,7 +264,7 @@ class ExternalDataStrategy(models.Model):
                 # apply object rules and update record
                 ext_object.rule_ids_pre.apply_rules(vals, metadata)
                 self._prune_vals(vals, **metadata)
-                ext_object.write_odoo_object(vals, **metadata)
+                ext_object.write_odoo_record(vals, **metadata)
 
                 # post processing
                 if field_mapping.rule_ids_post or ext_object.rule_ids_post:
@@ -274,7 +276,7 @@ class ExternalDataStrategy(models.Model):
                     field_mapping.rule_ids_post.apply_rules(vals, metadata)
                     ext_object.rule_ids_post.apply_rules(vals, metadata)
                     self._prune_vals(vals, **metadata)
-                    ext_object.write_odoo_object(vals, **metadata)
+                    ext_object.write_odoo_record(vals, **metadata)
 
                 resource.last_pull = datetime.now()
 
