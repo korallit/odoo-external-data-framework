@@ -170,22 +170,6 @@ class ExternalDataParserLine(models.Model):
             raise UserError("No parser directives defined")
         objects = {}
 
-        # generator definition
-        def object_data_generator(rules, data, vals={}):
-            foreign_type_id = rules.foreign_type_id.id
-            vals, generator, gen_rule_id = rules.get_object_data(
-                foreign_type_id, data, vals=vals,
-            )
-            if generator is not None and gen_rule_id:
-                child_rules = self.search([('parent_id', '=', gen_rule_id)])
-                for child_data in generator:
-                    gen = object_data_generator(
-                        child_rules, child_data, vals=vals)
-                    for child_vals in gen:
-                        yield child_vals
-            else:
-                yield vals
-
         # assuming that all rules use the same engine
         # TODO: prepare only if one engine found
         data_prep = self.prepare(raw_data, self[0].engine)
@@ -200,9 +184,26 @@ class ExternalDataParserLine(models.Model):
             if not rules:
                 continue  # TODO: log, exception
 
-            # saving generator
-            objects[foreign_type_id] = object_data_generator(rules, data_prep)
+            # setting up generator
+            objects[foreign_type_id] = self.object_data_generator(
+                rules, data_prep, vals={})
         return objects
+
+    @api.model
+    def object_data_generator(self, rules, data, vals={}):
+        foreign_type_id = rules.foreign_type_id.id
+        vals, generator, gen_rule_id = rules.get_object_data(
+            foreign_type_id, data, vals=vals,
+        )
+        if generator is not None and gen_rule_id:
+            child_rules = self.search([('parent_id', '=', gen_rule_id)])
+            for child_data in generator:
+                gen = self.object_data_generator(
+                    child_rules, child_data, vals=vals)
+                for child_vals in gen:
+                    yield child_vals
+        else:
+            yield vals
 
     def get_object_data(self, foreign_type_id, data,
                         vals={}, generator=None, gen_rule_id=False):
@@ -312,7 +313,7 @@ class ExternalDataParserLine(models.Model):
             if key[0] == '-':
                 attrs_not[key[1:]] = attrs.pop(key)
 
-        recursive =  self.path_type == 'children'
+        recursive = self.path_type == 'children'
         index = start = end = None
         if self.extract_method == 'index':
             index_str = self.extract_param
@@ -323,7 +324,13 @@ class ExternalDataParserLine(models.Model):
             index = bs.get_index(index_str)
 
         if self.path_type == 'find':
-            chunk = data.find(name=name, attrs=attrs)
+            if index:
+                try:
+                    chunk = data.find_all(name=name, attrs=attrs)[index]
+                except IndexError:
+                    return None
+            else:
+                chunk = data.find(name=name, attrs=attrs)
         elif self.path_type in ['next', 'prev']:
             direction = self.path_type
             gen = bs.findall(data, name, attrs, attrs_not,
@@ -333,11 +340,8 @@ class ExternalDataParserLine(models.Model):
             except StopIteration:
                 return None
         elif self.path_type in ['children', 'findall']:
-            if index:
-                chunk = data.find_all(name=name, attrs=attrs)[index]
-            else:
-                chunk = bs.findall(data, name, attrs, attrs_not,
-                                   recursive=recursive, start=start, end=end)
+            chunk = bs.findall(data, name, attrs, attrs_not,
+                               recursive=recursive, start=start, end=end)
         else:
             return None
 

@@ -88,7 +88,7 @@ class ExternalDataObject(models.Model):
         # getting model
         if self.object_link_id:
             model_model = self.object_link_id.model_model
-            self.sanitize_values(vals, model_model)
+            self.sanitize_values(vals, model_model, prune_false=False)
             record = self._record()
             record.write(vals)
         elif model_id and model_model:
@@ -135,14 +135,14 @@ class ExternalDataObject(models.Model):
         return True
 
     @api.model
-    def sanitize_values(self, vals, model_model, **kw):
+    def sanitize_values(self, vals, model_model, prune_false=True, **kw):
         model = self.env[model_model]
         fields_data = model.fields_get()
         fields_keys = list(fields_data.keys())
         vals_copy = vals.copy()  # can't pop from the iterated dict
         for key, value in vals_copy.items():
             # drop irrelevant item
-            if key not in fields_keys:
+            if key not in fields_keys or (prune_false and not value):
                 vals.pop(key)
                 continue
 
@@ -185,13 +185,13 @@ class ExternalDataObject(models.Model):
                     vals.pop(key)
             elif isinstance(value, list) and value:
                 vals[key] = value[0]
-            elif isinstance(value, int) or value is False:
+            elif type(value) == int or value is False:
                 vals[key] = value
             else:
                 vals.pop(key)
         elif ttype in ['one2many', 'many2many']:
             # only clear and link is supported
-            if isinstance(value, int):
+            if type(value) == int:
                 value = [value]
             elif isinstance(value, str):
                 try:
@@ -205,7 +205,7 @@ class ExternalDataObject(models.Model):
             if isinstance(value, list):
                 vals[key] = [
                     Command.link(i) for i in value
-                    if isinstance(i, int)
+                    if type(i) == int
                 ]
             elif value is False:
                 vals[key] = [Command.clear()]

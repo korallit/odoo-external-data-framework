@@ -5,6 +5,7 @@ from bs4 import element as bs_element
 import logging
 _logger = logging.getLogger(__name__)
 
+
 def get_index(i):
     if i == '':
         return None
@@ -13,6 +14,7 @@ def get_index(i):
     except ValueError:
         _logger.warning("Index should be an integer")
         return None
+
 
 def compute_conditions(item, name=None, attrs={}, attrs_not={}):
     conditions = []
@@ -34,6 +36,7 @@ def compute_conditions(item, name=None, attrs={}, attrs_not={}):
     conditions.append(not any(conditions_not))
     return all(conditions)
 
+
 def findall(tag, name, attrs, attrs_not, direction=None,
             start=None, end=None, recursive=None):
     if start or end:
@@ -48,7 +51,11 @@ def findall(tag, name, attrs, attrs_not, direction=None,
             generator = tag.previous_siblings
         else:
             generator = tag.descendants
+        found = False
         for item in generator:
             if isinstance(item, bs_element.Tag):
                 if compute_conditions(item, name, attrs, attrs_not):
+                    found = True
                     yield item
+        if not found:
+            yield None
