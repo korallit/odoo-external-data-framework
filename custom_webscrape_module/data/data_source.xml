@@ -46,7 +46,6 @@
 	<field name="sequence">1</field>
         <field name="model_id" ref="external_data_base.model_external_data_resource"/>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_sitemap"/>
-	<field name="foreign_id_field_id" ref="meleget_hu_foreign_type_sitemap_field_loc"/>
     </record>
 
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_sitemap_field_name">

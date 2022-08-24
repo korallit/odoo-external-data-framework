@@ -9,7 +9,6 @@
 	<field name="sequence">1</field>
         <field name="model_id" ref="website_sale.model_product_public_category"/>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_category"/>
-	<field name="foreign_id_field_id" ref="meleget_hu_foreign_type_category_field_href"/>
     </record>
 
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_category_field_name">
@@ -32,6 +31,8 @@
 	<field name="operation">object_link</field>
 	<field name="obj_source_id" search="[('name', '=', 'meleget.hu')]"/>
 	<field name="obj_mapping_id" ref="meleget_hu_mapping_category"/>
+	<field name="obj_foreign_type_id" ref="meleget_hu_foreign_type_category"/>
+        <field name="obj_model_id" ref="website_sale.model_product_public_category"/>
     </record>
 
     <!-- product -->
@@ -42,7 +43,6 @@
 	<field name="sequence">2</field>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_product"/>
         <field name="model_id" ref="product.model_product_template"/>
-	<field name="foreign_id_field_id" ref="meleget_hu_foreign_type_product_field_sku"/>
     </record>
 
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_default_code">
@@ -71,6 +71,8 @@
 	<field name="operation">object_link</field>
 	<field name="obj_source_id" search="[('name', '=', 'meleget.hu')]"/>
 	<field name="obj_mapping_id" ref="meleget_hu_mapping_category"/>
+	<field name="obj_foreign_type_id" ref="meleget_hu_foreign_type_category"/>
+        <field name="obj_model_id" ref="website_sale.model_product_public_category"/>
     </record>
 
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_field_image_1920">
@@ -95,7 +97,6 @@
 	<field name="sequence">3</field>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_product"/>
         <field name="model_id" ref="product.model_product_pricelist_item"/>
-	<field name="foreign_id_field_id" ref="meleget_hu_foreign_type_product_field_sku"/>
     </record>
 
     <record model="external.data.field.mapping.line" id="meleget_hu_mapping_product_pricelist_item_field_fixed_price">
@@ -118,6 +119,8 @@
 	<field name="operation">object_link</field>
 	<field name="obj_source_id" search="[('name', '=', 'meleget.hu')]"/>
 	<field name="obj_mapping_id" ref="meleget_hu_mapping_product"/>
+	<field name="obj_foreign_type_id" ref="meleget_hu_foreign_type_product"/>
+        <field name="obj_model_id" ref="product.model_product_template"/>
     </record>
 
     <record model="external.data.rule" id="meleget_hu_mapping_product_pricelist_item_rule_pricelist_id">
@@ -127,7 +130,7 @@
 	<field name="key">pricelist_id</field>
 	<field name="sequence">2</field>
 	<field name="operation">orm_ref</field>
-	<field name="orm_ref">meleget_hu_pricelist_list</field>
+	<field name="orm_ref">custom_webscrape_module.meleget_hu_pricelist_list</field>
     </record>
 
     <record model="external.data.rule" id="meleget_hu_mapping_product_pricelist_item_rule_compute_price">

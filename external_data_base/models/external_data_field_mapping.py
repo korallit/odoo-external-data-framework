@@ -1,9 +1,12 @@
 # coding: utf-8
 
+import json
+import logging
+from datetime import datetime
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
-import logging
 _logger = logging.getLogger(__name__)
 
 
@@ -21,11 +24,17 @@ class ExternalDataType(models.Model):
         comodel_name='external.data.resource',
         string="Resources",
     )
+    field_mapping_ids = fields.One2many(
+        'external.data.field.mapping',
+        inverse_name='foreign_type_id',
+        string="Field mapping",
+    )
 
 
 class ExternalDataTypeField(models.Model):
     _name = 'external.data.type.field'
     _description = "External Data Type Field"
+    _order = 'priority'
 
     name = fields.Char(required=True)
     foreign_type_id = fields.Many2one(
@@ -34,6 +43,7 @@ class ExternalDataTypeField(models.Model):
         required=True,
         ondelete='cascade',
     )
+    priority = fields.Integer(default=10)
 
 
 class ExternalDataFieldMappingLine(models.Model):
@@ -55,7 +65,7 @@ class ExternalDataFieldMappingLine(models.Model):
         string="Foreign field",
         required=True,
         ondelete='restrict',
-        domain="[('foreign_type_id', '=', foreign_type_id)]"
+        domain="[('foreign_type_id', '=', foreign_type_id)]",
     )
     odoo_model = fields.Char(related='field_mapping_id.model_id.model')
     odoo_field_id = fields.Many2one(
@@ -109,13 +119,6 @@ class ExternalDataFieldMapping(models.Model):
         required=True,
         ondelete='restrict',
     )
-    foreign_id_field_id = fields.Many2one(
-        'external.data.type.field',
-        string="Foreign ID field",
-        required=True,
-        ondelete='restrict',
-        help="The ID parameter key in the external data structure."
-    )
     data_source_id = fields.Many2one(
         'external.data.source',
         string="Data source",
@@ -149,6 +152,8 @@ class ExternalDataFieldMapping(models.Model):
         string="Post rules",
         domain=[('pre_post', '=', 'post')],
     )
+    test_data = fields.Text("Test data", default="{}")
+    test_metadata = fields.Text("Test metadata", default="{}")
 
     def apply_mapping(self, data, metadata={}):
         self.ensure_one()
@@ -187,6 +192,49 @@ class ExternalDataFieldMapping(models.Model):
             metadata['processed_keys'].append(target_key)
 
         return vals
+
+    def test_mapping(self, data=False, metadata=False,
+                     pre=True, post=False, prune=True, sanitize=True):
+        self.ensure_one()
+        try:
+            if not data:
+                data = json.loads(self.test_data)
+            if not metadata:
+                metadata = json.loads(self.test_metadata)
+        except json.decoder.JSONDecodeError:
+            raise ValidationError("Invalid JSON test data")
+        if not data:
+            raise ValidationError("No test data")
+
+        foreign_type = self.foreign_type_id
+        metadata.update({
+            'field_mapping_id': self.id,
+            'model_id': self.model_id.id,
+            'model_model': self.model_id.model,
+            'foreign_type_id': foreign_type.id,
+            'foreign_type_name': foreign_type.name,
+            'foreign_id_key': foreign_type.field_ids[0].name,
+            'now': datetime.now(),
+            'record': False,
+        })
+        vals = self.apply_mapping(data, metadata)
+        if pre:
+            metadata.update(pre_post='pre')
+            self.rule_ids_pre.apply_rules(vals, metadata)
+        if post:
+            metadata.update(pre_post='post')
+            self.rule_ids_post.apply_rules(vals, metadata)
+        if prune:
+            implicit_keys = set(vals.keys()) - set(metadata['processed_keys'])
+            for key in implicit_keys:
+                vals.pop(key)
+        sane = "N/A"
+        if sanitize:
+            sane = self.env['external.data.object'].sanitize_values(
+                vals, **metadata)
+
+        result = {'vals': vals, 'metadata': metadata, 'sane_for_create': sane}
+        return result
 
     def button_details(self):
         self.ensure_one()

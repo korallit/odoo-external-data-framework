@@ -6,6 +6,7 @@
     </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_loc">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_sitemap"/>
+	<field name="priority" eval="1"/>
 	<field name="name">loc</field>
     </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_sitemap_field_lastmod">
@@ -27,6 +28,7 @@
     </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_sku">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="priority" eval="1"/>
 	<field name="name">sku</field>
     </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_name">
@@ -53,6 +55,10 @@
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
 	<field name="name">price</field>
     </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_net_price">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">net_price</field>
+    </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_pricecurrency">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
 	<field name="name">pricecurrency</field>
@@ -70,13 +76,14 @@
     <record model="external.data.type" id="meleget_hu_foreign_type_category">
 	<field name="name">category</field>
     </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_href">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
+	<field name="priority" eval="1"/>
+	<field name="name">href</field>
+    </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_name">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
 	<field name="name">name</field>
-    </record>
-    <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_href">
-	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>
-	<field name="name">href</field>
     </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_category_field_parent_href">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_category"/>

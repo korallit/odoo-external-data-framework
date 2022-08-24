@@ -125,6 +125,15 @@ class ExternalDataRule(models.Model):
         'external.data.field.mapping',
         "Field mapping",
     )
+    obj_foreign_type_id = fields.Many2one(
+        'external.data.type',
+        "Foreign type",
+        domain="[('field_mapping_ids', 'in', [obj_mapping_id])]",
+    )
+    obj_model_id = fields.Many2one(
+        'ir.model',
+        "Model",
+    )
     condition = fields.Char(
         help="A python expression that evaluates to a boolean (default=True). "
         "Available variables: vals(dict), metadata(dict)."
@@ -174,7 +183,11 @@ class ExternalDataRule(models.Model):
             elif rule.operation == 'eval':
                 result = rule._eval_expr(rule.eval_str, vals, metadata)
             elif rule.operation == 'orm_ref' and rule.orm_ref:
-                record = rule.env.ref(rule.orm_ref)
+                try:
+                    record = rule.env.ref(rule.orm_ref)
+                except ValueError as e:
+                    _logger.error(e)
+                    continue
                 if record:
                     result = record.id
             elif rule.operation == 'orm_expr':
@@ -260,15 +273,24 @@ class ExternalDataRule(models.Model):
     def _search_object_link(self, value):
         # This method returns False instead of None to clear irrelevant values
         self.ensure_one()
-        foreign_type_id = self.obj_mapping_id.foreign_type_id.id
-        if not foreign_type_id:
+        field_mapping = self.obj_mapping_id
+        foreign_type_id = self.obj_foreign_type_id.id
+        model_id = self.obj_model_id.id
+        if field_mapping:
+            if not foreign_type_id:
+                foreign_type_id = field_mapping.foreign_type_id.id
+            if not model_id:
+                model_id = field_mapping.model_id.id
+        if not (foreign_type_id and model_id):
             return False
-        object_link = self.env['external.data.object'].search([
+        ext_object = self.env['external.data.object'].search([
             ('foreign_type_id', '=', foreign_type_id),
             ('foreign_id', '=', value),
-        ]).object_link_id
-        if object_link:
-            return object_link.record_id
+        ], limit=1)  # TODO: check if more than one found
+        if ext_object:
+            object_link = ext_object.get_object_link(model_id)
+            if object_link:
+                return object_link.record_id
         return False
 
     @api.model

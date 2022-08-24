@@ -35,7 +35,6 @@
 					    />
 				    <field name="foreign_type_id"/>
 				    <field name="model_id"/>
-				    <field name="foreign_id_field_id"/>
 				</tree>
 			    </field>
 			</page>

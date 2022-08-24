@@ -13,3 +13,4 @@ access_external_data_type,external_data_type,model_external_data_type,base.group
 access_external_data_type_field,external_data_type_field,model_external_data_type_field,base.group_user,1,1,1,1
 access_external_data_field_mapping_line,external_data_field_mapping_line,model_external_data_field_mapping_line,base.group_user,1,1,1,1
 access_external_data_rule,external_data_rule,model_external_data_rule,base.group_user,1,1,1,1
+access_external_data_debug_wizard,external_data_debug_wizard,model_external_data_debug_wizard,base.group_user,1,1,1,1

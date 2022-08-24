@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <odoo>
-    <!-- Server Actions -->
-    <record model="ir.actions.server" id="external_data_action_refresh_resources">
+    <!-- Data source -->
+    <record model="ir.actions.server" id="external_data_action_data_source_list">
 	<field name="name">Refresh Resource List</field>
 	<field name="model_id" ref="model_external_data_source"/>
 	<field name="binding_model_id" ref="model_external_data_source"/>
@@ -13,40 +13,35 @@
 	</field>
     </record>
 
-    <record model="ir.actions.server" id="external_data_action_batch_pull">
+    <record model="ir.actions.server" id="external_data_action_data_source_batch_pull">
 	<field name="name">Batch Pull</field>
 	<field name="model_id" ref="model_external_data_source"/>
 	<field name="binding_model_id" ref="model_external_data_source"/>
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
-	<field name="code">
-	    record.batch_pull(sync=True, prune=False)
-	</field>
+	<field name="code">record.batch_pull(sync=True, prune=False)</field>
     </record>
 
-    <record model="ir.actions.server" id="external_data_action_pull_resource">
+    <!-- Resource -->
+    <record model="ir.actions.server" id="external_data_action_resource_pull">
 	<field name="name">Pull</field>
 	<field name="model_id" ref="model_external_data_resource"/>
 	<field name="binding_model_id" ref="model_external_data_resource"/>
 	<field name="binding_view_types">form</field>
 	<field name="state">code</field>
-	<field name="code">
-	    records.pull(sync=True, prune=False)
-	</field>
+	<field name="code">record.pull(sync=True, prune=False)</field>
     </record>
 
-    <record model="ir.actions.server" id="external_data_action_pull_resource_multi">
+    <record model="ir.actions.server" id="external_data_action_resource_pull_multi">
 	<field name="name">Batch pull</field>
 	<field name="model_id" ref="model_external_data_resource"/>
 	<field name="binding_model_id" ref="model_external_data_resource"/>
 	<field name="binding_view_types">list</field>
 	<field name="state">code</field>
-	<field name="code">
-	    records.batch_pull(sync=True, prune=False, do_all=True)
-	</field>
+	<field name="code">records.batch_pull(sync=True, prune=False)</field>
     </record>
 
-    <record model="ir.actions.server" id="external_data_action_toggle_skip">
+    <record model="ir.actions.server" id="external_data_action_resource_toggle_skip">
 	<field name="name">Toggle 'skip'</field>
 	<field name="model_id" ref="model_external_data_resource"/>
 	<field name="binding_model_id" ref="model_external_data_resource"/>

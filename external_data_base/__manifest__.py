@@ -30,6 +30,7 @@
         'views/external_data_rule.xml',
         'views/external_data_strategy.xml',
         'views/external_data_menus.xml',
+        'views/external_data_wizard.xml',
         'actions/external_data_actions.xml',
     ],
 }

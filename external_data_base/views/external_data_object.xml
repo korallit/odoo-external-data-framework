@@ -16,6 +16,8 @@
 		<field name="foreign_id"/>
 		<field name="data_source_id"/>
 		<field name="foreign_type_id"/>
+		<field name="object_link_ids"/>
+		<field name="last_sync"/>
 	    </tree>
 	</field>
     </record>
@@ -29,9 +31,17 @@
 		    <field name="foreign_id"/>
 		    <field name="data_source_id"/>
 		    <field name="foreign_type_id"/>
-		    <field name="object_link_id"/>
 		</group>
 		<notebook>
+		    <page string="Related records">
+			<field name="object_link_ids">
+			    <tree>
+				<button string="open record" type="object" name="button_open"/>
+				<field name="name"/>
+				<field name="model_model"/>
+			    </tree>
+			</field>
+		    </page>
 		    <page string="Resources">
 			<field name="resource_ids">
 			    <tree>

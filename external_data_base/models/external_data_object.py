@@ -32,10 +32,13 @@ class ExternalDataObject(models.Model):
         "to match the foreign object with an odoo record.",
         required=True,
     )
-    object_link_id = fields.Many2one(  # TODO: move to ir.model.data
+    object_link_ids = fields.Many2many(  # TODO: move to ir.model.data
         'external.data.object.link',
-        ondelete='set null',
-        string="Object link",
+        string="Object links",
+    )
+    link_count = fields.Integer(
+        "Links",
+        compute='_compute_link_count',
     )
     data_source_id = fields.Many2one(
         'external.data.source',
@@ -65,40 +68,51 @@ class ExternalDataObject(models.Model):
     )
     last_sync = fields.Datetime("Last sync")
 
-    @api.depends('foreign_id')
-    def _compute_name(self):
+    @api.depends('object_link_ids')
+    def _compute_link_count(self):
         for record in self:
-            related_rec = record._record()
-            if related_rec:
-                record.name = related_rec.display_name
-            else:
-                record.name = record.foreign_id
+            record.link_count = len(record.object_link_ids)
 
-    def _record(self):
+    @api.depends('foreign_id')
+    def _compute_name(self):  # TODO: should be default
+        for record in self:
+            record.name = record.foreign_id
+
+    def get_object_link(self, model_id):
         self.ensure_one()
-        if not self.object_link_id:
-            return False
-        res_model = self.object_link_id.model_model
-        res_id = self.object_link_id.record_id
-        return self.env[res_model].browse(res_id).exists()
+        object_link = self.object_link_ids.filtered(
+            lambda r: r.model_id.id == model_id
+        )
+        msg_tail = f"external object ID {self.id}, model ID {model_id}"
+        if not object_link:
+            _logger.warning(f"No object link found: {msg_tail}")
+        elif len(object_link) > 1:
+            _logger.warning(
+                "Multiple object link found, "
+                f"consider data consolidation: {msg_tail}"
+            )
+            object_link = object_link[0]
+        return object_link
+
+    def _record(self, model_id):
+        return self.get_object_link(model_id)._record()
 
     def write_odoo_record(self, vals,
                           model_id=False, model_model=False, **kw):
         self.ensure_one()
         # getting model
-        if self.object_link_id:
-            model_model = self.object_link_id.model_model
+        object_link = self.get_object_link(model_id)
+        if object_link:
             self.sanitize_values(vals, model_model, prune_false=False)
-            record = self._record()
+            record = object_link._record()
             record.write(vals)
         elif model_id and model_model:
             if self.sanitize_values(vals, model_model):
                 record = self.env[model_model].create(vals)
-                object_link = self.object_link_id.create({
+                self.object_link_ids = [Command.create({
                     'model_id': model_id,
                     'record_id': record.id,
-                })
-                self.object_link_id = object_link.id
+                })]
             else:
                 _logger.error(
                     "Provided values are not enough "
@@ -110,29 +124,50 @@ class ExternalDataObject(models.Model):
             )
         self.last_sync = datetime.now()
 
-    def find_and_set_object_link_id(self, model_id, **kw):
-        """Tries to find object in other data sources by foreign_id,
-        sets on record if found one, returns boolean."""
+    def link_similar_objects(self, model_id, search_own_source=False, **kw):
+        """Tries to find similar objects in other data_sources by foreign_id,
+        sets on record if found, returns boolean."""
+        if not self:
+            return False
+        self.ensure_one()
 
         # find similar object links
-        similar_type_ids = self.env['external.data.field.mapping'].search([
-            ('data_source_id', '!=', self.data_source_id.id),
-            ('model_id', '=', model_id),
-        ]).mapped('foreign_type_id')
-        object_link_ids = self.env['external.data.object'].search([
-            ('foreign_type_id', 'in', similar_type_ids),
+        foreign_type_domain = [('model_id', '=', model_id)]
+        if not search_own_source:
+            foreign_type_domain.append(
+                ('data_source_id', '!=', self.data_source_id.id))
+
+        similar_type_ids = self.env['external.data.field.mapping'].search(
+            foreign_type_domain).mapped('foreign_type_id').ids
+        similar_object_links = self.search([
             ('foreign_id', '=', self.foreign_id),
-        ]).mapped('object_link_id')
-        if not object_link_ids:
+            ('foreign_type_id', 'in', similar_type_ids),
+        ]).mapped('object_link_ids').filtered(
+            lambda r:
+            r.model_id.id == model_id and
+            r.id not in self.object_link_ids.ids and
+            r._record()
+        )
+        if not similar_object_links:
             return False
 
-        if len(object_link_ids) > 1:
-            _logger.warning(
-                f"Multiple object links found for object ID {self.id}, "
-                "picking first. Consider manual data consolidation."
-            )
-        self.object_link_id = object_link_ids[0]
+        _logger.info(
+            "Adding similar object links ids to object "
+            f"ID {self.id}: {similar_object_links.ids}"
+        )
+        self.object_link_ids = [
+            Command.link(link.id) for link in similar_object_links
+        ]
         return True
+
+    def healthcheck(self):
+        """Delete empty object links, try to find valid ones."""
+        for record in self:
+            record.object_link_ids.prune()
+            model_ids = self.data_source_id.field_mapping_ids.mapped(
+                'model_id').ids
+            for model_id in model_ids:
+                record.link_similar_objects(model_id, search_own_source=True)
 
     @api.model
     def sanitize_values(self, vals, model_model, prune_false=True, **kw):
@@ -165,7 +200,7 @@ class ExternalDataObject(models.Model):
                 name not in vals.keys(),
                 data.get('required'),
                 name not in fields_with_default,
-                data.get('type') not in ['one2many', 'many2many'],
+                data.get('type') not in ['one2many', 'many2many'],  # TODO: ???
             ]
             if all(conditions):
                 _logger.warning(
@@ -243,6 +278,15 @@ class ExternalDataObject(models.Model):
         else:
             return records.id
 
+    def button_details(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "external.data.object",
+            "views": [[False, "form"]],
+            "res_id": self.id,
+        }
+
 
 class ExternalDataObjectLink(models.Model):
     _name = 'external.data.object.link'
@@ -264,9 +308,8 @@ class ExternalDataObjectLink(models.Model):
         model_field='model_model',
         required=True,
     )
-    object_ids = fields.One2many(
+    object_ids = fields.Many2many(
         'external.data.object',
-        inverse_name='object_link_id',
         string="External objects",
     )
 
@@ -276,9 +319,23 @@ class ExternalDataObjectLink(models.Model):
             related_rec = record._record()
             if related_rec:
                 record.name = related_rec.display_name
+            else:
+                record.name = "N/A"
 
     def _record(self):
         if not self:
             return False
         self.ensure_one()
         return self.env[self.model_id.model].browse(self.record_id).exists()
+
+    def button_open(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": self.model_model,
+            "views": [[False, "form"]],
+            "res_id": self.record_id,
+        }
+
+    def prune(self):
+        self.filtered(lambda r: not r._record()).unlink()

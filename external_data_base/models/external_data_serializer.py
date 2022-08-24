@@ -127,7 +127,8 @@ class ExternalDataParserLine(models.Model):
         selection=[
             ('xpath', "XPath"),
             ('elementpath', "ElementPath"),
-            ('css', "CSS selector"),
+            ('css_find', "CSS selector"),
+            ('css_findall', "CSS selector (multi)"),
             ('open_graph', "Open Graph"),
             ('schema_org', "Schema.org"),
             ('find', "find"),
@@ -162,7 +163,7 @@ class ExternalDataParserLine(models.Model):
                     field_name,
                     record.foreign_field_id.name,
                 ])
-            record.name = f"{field_name}:{record.path}"
+            record.name = f"{field_name}: {record.path}"
 
     def objects(self, raw_data):
         "Returns a dict of object data generators"
@@ -245,7 +246,7 @@ class ExternalDataParserLine(models.Model):
     def is_generator(self):
         self.ensure_one()
         # TODO: can be different with different engines
-        if self.path_type in ['elementpath', 'findall']:
+        if self.path_type in ['elementpath', 'findall', 'css_findall']:
             return True
         return False
 
@@ -342,6 +343,19 @@ class ExternalDataParserLine(models.Model):
         elif self.path_type in ['children', 'findall']:
             chunk = bs.findall(data, name, attrs, attrs_not,
                                recursive=recursive, start=start, end=end)
+        elif self.path_type == 'css_find':
+            if index:
+                chunk = data.select(self.path)[index]
+            else:
+                chunk = data.select_one(self.path)
+        elif self.path_type == 'css_findall':
+            if start or end:
+                chunk = data.select(self.path)[start:end]
+            else:
+                chunk = data.select(self.path)
+            if not chunk:
+                return None
+            chunk = (e for e in chunk)
         else:
             return None
 

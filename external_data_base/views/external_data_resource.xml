@@ -28,8 +28,16 @@
 	<field name="arch" type="xml">
 	    <form>
 		<sheet>
+		    <div class="oe_button_box" name="button_box">
+			<button type="object"
+				name="visit_url"
+				string="Open URL"
+				icon="fa-share">
+			</button>
+		    </div>
 		    <group>
 			<field name="name"/>
+			<field name="url"/>
 			<field name="data_source_id"/>
 			<field name="priority"/>
 			<field name="skip"/>
@@ -47,8 +55,9 @@
 			    <field name="object_ids">
 				<tree>
 				    <field name="foreign_id"/>
-				    <field name="field_mapping_id"/>
-				    <field name="priority"/>
+				    <button string="open" type="object" name="button_details"/>
+				    <field name="foreign_type_id"/>
+				    <field name="object_link_ids"/>
 				    <field name="last_sync"/>
 				</tree>
 			    </field>
