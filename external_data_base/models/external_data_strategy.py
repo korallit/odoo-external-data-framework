@@ -260,6 +260,10 @@ class ExternalDataStrategy(models.Model):
                     # pre processing
                     vals = field_mapping.apply_mapping(data, metadata)
                     preprocess_rules.apply_rules(vals, metadata)
+                    if metadata.get('drop'):
+                        if record and metadata.get('delete'):
+                            record.unlink()
+                        continue
                     self._prune_vals(vals, **metadata)
 
                     # save vals for deferred create and continue
@@ -300,6 +304,10 @@ class ExternalDataStrategy(models.Model):
                         metadata.update(pre_post='post')
                         vals = field_mapping.apply_mapping(data, metadata)
                         postprocess_rules.apply_rules(vals, metadata)
+                        if metadata.get('drop'):
+                            if record and metadata.get('delete'):
+                                record.unlink()
+                            continue
                         self._prune_vals(vals, **metadata)
                         if metadata['operation'] == 'list':
                             external_objects.sanitize_values(vals, **metadata)

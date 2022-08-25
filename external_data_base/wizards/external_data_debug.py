@@ -28,16 +28,43 @@ class ExternalDataDebugWizard(models.TransientModel):
             ('pull', "pull"),
         ]
     )
+    debug = fields.Boolean(default=True)
+    prune = fields.Boolean(default=True)
+    sanitize = fields.Boolean(default=True)
+    pre_post = fields.Selection(
+        string="pre/post",
+        selection=[
+            ('pre', "pre"),
+            ('post', "post"),
+            ('all', "all"),
+        ],
+        default='pre',
+    )
     output = fields.Text()
 
-    @api.onchange('operation')
+    @api.onchange('operation', 'debug')
     def _onchange_operation(self):
         for record in self:
+            if not record.debug:
+                record.output = "To show output, check 'debug'"
+                continue
+
             result = False
             if not record.operation:
                 record.output = "Choose an operation to start!"
             elif record.operation == 'map' and record.field_mapping_id:
-                result = record.field_mapping_id.test_mapping()
+                pre = post = False
+                if record.pre_post == 'pre':
+                    pre, post = True, False
+                elif record.pre_post == 'pre':
+                    pre, post = False, True
+                elif record.pre_post == 'all':
+                    pre = post = True
+                result = record.field_mapping_id.test_mapping(
+                    pre=pre, post=post,
+                    prune=record.prune,
+                    sanitize=record.sanitize,
+                )
             elif record.operation == 'parse' and record.resource_id:
                 result, _ = record.resource_id.test_parser(
                     strategy_id=record.strategy_id.id)

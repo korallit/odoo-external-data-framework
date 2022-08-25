@@ -11,7 +11,13 @@
 		    <field name="field_mapping_id"/>
 		    <field name="resource_id"/>
 		    <field name="strategy_id"/>
+		    <field name="debug"/>
 		    <field name="operation"/>
+		</group>
+		<group>
+		    <field name="prune"/>
+		    <field name="sanitize"/>
+		    <field name="pre_post"/>
 		</group>
 		<separator string="output:"/>
 		<field name="output" nolabel="1" readonly="1" style="font-family: monospace;"/>

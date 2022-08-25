@@ -54,9 +54,11 @@ class ExternalDataRule(models.Model):
     operation = fields.Selection(
         string="Operation",
         selection=[
+            ('drop', "Drop item"),
             ('exclude', "exclude"),
             ('clear', "clear"),
             ('replace', "regexp replace"),
+            ('hashtable', "hashtable"),
             ('parse_time', "Parse time"),
             ('lambda', "lambda"),
             ('eval', "eval"),
@@ -70,10 +72,12 @@ class ExternalDataRule(models.Model):
     operation_help = fields.Selection(
         string="Description",
         selection=[
+            ('drop', "Drop item if the conditions met"),
             ('exclude', "Pops value from 'vals' dictionary."),
             ('clear', "Set value to 'False'"),
             ('replace', "Replace value with re.sub(pattern, repl, count)"),
             ('parse_time', "Parse time by pattern with time.strptime"),
+            ('hashtable', "Map parsed data as key to a hashtable"),
             (
                 'lambda',
                 "lambda expression evaluated to value ('v' in input)."
@@ -101,9 +105,11 @@ class ExternalDataRule(models.Model):
         readonly=True,
         compute="_compute_help",
     )
+    drop_delete = fields.Boolean("delete")
     sub_pattern = fields.Char()
     sub_repl = fields.Char()
     sub_count = fields.Integer()
+    hashtable = fields.Text(default="{}")
     parse_time_pattern = fields.Char("pattern")
     lambda_str = fields.Char("lambda v:")
     eval_str = fields.Char("eval")
@@ -162,6 +168,11 @@ class ExternalDataRule(models.Model):
             if rule.condition:
                 if not bool(rule._eval_expr(rule.condition, vals, metadata)):
                     continue
+            if rule.operation == 'drop':
+                metadata.update(drop=True)
+                if rule.drop_delete:
+                    metadata.update(delete=True)
+                return
 
             value = vals.get(rule.key)
             result = None
@@ -172,6 +183,11 @@ class ExternalDataRule(models.Model):
                 result = False
             elif rule.operation == 'replace':
                 result = rule._regexp_replace(value, vals)
+            elif rule.operation == 'hashtable':
+                if rule.hashtable and value:
+                    hashtable = self._eval_expr(rule.hashtable)
+                    if isinstance(hashtable, dict):
+                        result = hashtable.get(value)
             elif rule.operation == 'parse_time':
                 result = rule._parse_time(value)
             elif rule.operation == 'lambda' and rule.lambda_str:
