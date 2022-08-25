@@ -111,8 +111,8 @@ class ExternalDataRule(models.Model):
     sub_count = fields.Integer()
     hashtable = fields.Text(default="{}")
     parse_time_pattern = fields.Char("pattern")
-    lambda_str = fields.Char("lambda v:")
-    eval_str = fields.Char("eval")
+    lambda_str = fields.Text("lambda v:")
+    eval_str = fields.Text("eval")
     orm_ref = fields.Char("ORM external ID")
     orm_model = fields.Many2one(
         comodel_name='ir.model',
@@ -212,12 +212,14 @@ class ExternalDataRule(models.Model):
                 result = rule._parse_time(value)
             elif rule.operation == 'lambda' and rule.lambda_str:
                 if rule.lambda_str:
-                    lambda_str = f"lambda v: {rule.lambda_str}"
+                    lambda_str = f"(lambda v: {rule.lambda_str})"
                     f = rule._get_lambda(lambda_str, vals)
                     if f:
                         result = f(value)
             elif rule.operation == 'eval':
-                result = rule._eval_expr(rule.eval_str, vals, metadata)
+                if rule.eval_str:
+                    eval_str = "(" + rule.eval_str + ")"
+                    result = rule._eval_expr(eval_str, vals, metadata)
             elif rule.operation == 'orm_ref' and rule.orm_ref:
                 try:
                     record = rule.env.ref(rule.orm_ref)
