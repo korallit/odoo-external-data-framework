@@ -1,4 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_external_data_domain_wizard,external_data_domain_wizard,model_external_data_domain_wizard,base.group_user,1,1,1,1
 access_external_data_source,external_data_source,model_external_data_source,base.group_user,1,1,1,1
 access_external_data_credential,external_data_credential,model_external_data_credential,base.group_user,1,1,1,1
 access_external_data_transporter,external_data_transporter,model_external_data_transporter,base.group_user,1,1,1,1

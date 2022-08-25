@@ -21,6 +21,7 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'views/domain_wizard.xml',
         'views/external_data_source.xml',
         'views/external_data_transporter.xml',
         'views/external_data_serializer.xml',
