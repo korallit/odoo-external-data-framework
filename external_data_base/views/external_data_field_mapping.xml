@@ -40,6 +40,7 @@
 				    <field name="name"/>
 				    <field name="key"/>
 				    <field name="operation" widget="selection"/>
+				    <field name="condition_negate"/>
 				    <field name="condition"/>
 				    <control>
 					<create string="Add a rule"/>
@@ -64,6 +65,7 @@
 				    <field name="name"/>
 				    <field name="key"/>
 				    <field name="operation" widget="selection"/>
+				    <field name="condition_negate"/>
 				    <field name="condition"/>
 				    <control>
 					<create string="Add a rule"/>
