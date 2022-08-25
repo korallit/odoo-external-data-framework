@@ -41,43 +41,50 @@ class ExternalDataDebugWizard(models.TransientModel):
         default='pre',
     )
     output = fields.Text()
+    button_run = fields.Boolean("Run test")
 
-    @api.onchange('operation', 'debug')
-    def _onchange_operation(self):
+    @api.onchange('button_run')
+    def _button_run_pressed(self):
         for record in self:
-            if not record.debug:
-                record.output = "To show output, check 'debug'"
-                continue
+            if record.button_run:
+                record._run_test()
+                record.button_run = False
 
-            result = False
-            if not record.operation:
-                record.output = "Choose an operation to start!"
-            elif record.operation == 'map' and record.field_mapping_id:
-                pre = post = False
-                if record.pre_post == 'pre':
-                    pre, post = True, False
-                elif record.pre_post == 'pre':
-                    pre, post = False, True
-                elif record.pre_post == 'all':
-                    pre = post = True
-                result = record.field_mapping_id.test_mapping(
-                    pre=pre, post=post,
-                    prune=record.prune,
-                    sanitize=record.sanitize,
-                )
-            elif record.operation == 'parse' and record.resource_id:
-                result, _ = record.resource_id.test_parser(
-                    strategy_id=record.strategy_id.id)
-            elif record.operation == 'pull' and record.resource_id:
-                result = record.resource_id.test_pull(
-                    strategy_id=record.strategy_id.id)
-            else:
-                record.output = (
-                    "Something is missing, or "
-                    f"operation '{record.operation}' is not implemented yet..."
-                )
+    def _run_test(self):
+        self.ensure_one()
+        if not self.debug:
+            self.output = "To show output, check 'debug'"
+            return
 
-            if result:
-                record.output = json.dumps(
-                    result, ensure_ascii=False, indent=4, default=str,
-                )
+        result = False
+        if not self.operation:
+            self.output = "Choose an operation to start!"
+        elif self.operation == 'map' and self.field_mapping_id:
+            pre = post = False
+            if self.pre_post == 'pre':
+                pre, post = True, False
+            elif self.pre_post == 'pre':
+                pre, post = False, True
+            elif self.pre_post == 'all':
+                pre = post = True
+            result = self.field_mapping_id.test_mapping(
+                pre=pre, post=post,
+                prune=self.prune,
+                sanitize=self.sanitize,
+            )
+        elif self.operation == 'parse' and self.resource_id:
+            result, _ = self.resource_id.test_parser(
+                strategy_id=self.strategy_id.id)
+        elif self.operation == 'pull' and self.resource_id:
+            result = self.resource_id.test_pull(
+                strategy_id=self.strategy_id.id)
+        else:
+            self.output = (
+                "Something is missing, or "
+                f"operation '{self.operation}' is not implemented yet..."
+            )
+
+        if result:
+            self.output = json.dumps(
+                result, ensure_ascii=False, indent=4, default=str,
+            )

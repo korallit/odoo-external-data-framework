@@ -7,20 +7,23 @@
 	<field name="model">external.data.debug.wizard</field>
 	<field name="arch" type="xml">
 	    <form>
-		<group>
+		<group col="4">
 		    <field name="field_mapping_id"/>
 		    <field name="resource_id"/>
+		    <field name="operation"/>
 		    <field name="strategy_id"/>
 		    <field name="debug"/>
-		    <field name="operation"/>
 		</group>
-		<group>
+		<group col="4">
 		    <field name="prune"/>
-		    <field name="sanitize"/>
 		    <field name="pre_post"/>
+		    <field name="sanitize"/>
+		    <field string="Run test" name="button_run" widget="toggle_button"
+			   attrs="{'invisible': [('debug', '=', False)]}"/>
 		</group>
 		<separator string="output:"/>
-		<field name="output" nolabel="1" readonly="1" style="font-family: monospace;"/>
+		<field name="output" nolabel="1" readonly="1"
+		       style="font-family: monospace;"/>
 		<footer id="button_box">
 		    <button string="close" special="cancel"/>
 		</footer>

@@ -113,6 +113,8 @@ class ExternalDataFieldMapping(models.Model):
         required=True,
         ondelete='cascade',
     )
+    model_model = fields.Char(related='model_id.model')
+    filter_domain = fields.Char("Filter")
     foreign_type_id = fields.Many2one(
         'external.data.type',
         string="Foreign Type",

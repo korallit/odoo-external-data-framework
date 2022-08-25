@@ -6,6 +6,7 @@
 	<field name="model">external.data.domain.wizard</field>
 	<field name="arch" type="xml">
 	    <form>
+		<field name="model_model" invisible="1"/>
 		<sheet>
 		    <group>
 			<field name="domain_operator"/>
@@ -14,7 +15,6 @@
 		    <group>
 			<field name="model_id"/>
 			<field name="field_id"/>
-			<field name="model_model" invisible="1"/>
 		    </group>
 		    <group>
 			<field name="term_operator"/>
