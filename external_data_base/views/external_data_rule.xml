@@ -23,13 +23,12 @@
 			<field name="field_mapping_id"/>
 			<field name="object_id"/>
 		    </group>
+		    <group>
+			<field name="operation" widget="selection"/>
+			<field name="operation_help" widget="selection"/>
+		    </group>
 		    <notebook>
-			<page string="Operations">
-			    <group>
-				<field name="operation" widget="selection"/>
-				<field name="operation_help" widget="selection"/>
-				<field name="condition" style="font-family: monospace;" class="bg-dark text-light"/>
-			    </group>
+			<page string="Parameters">
 			    <group attrs="{'invisible': [('operation', '!=', 'drop')]}">
 				<field name="drop_delete"/>
 			    </group>
@@ -70,6 +69,12 @@
 				<field name="obj_foreign_type_id"/>
 				<field name="obj_model_id"/>
 			    </group>
+			</page>
+			<page string="Conditions">
+			    <group>
+				<field name="condition_operator"/>
+			    </group>
+			    <field name="condition" nolabel="1" style="font-family: monospace;" class="bg-dark text-light"/>
 			</page>
 		    </notebook>
 		</sheet>

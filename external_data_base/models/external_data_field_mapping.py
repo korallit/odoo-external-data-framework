@@ -215,6 +215,7 @@ class ExternalDataFieldMapping(models.Model):
             'foreign_type_name': foreign_type.name,
             'foreign_id_key': foreign_type.field_ids[0].name,
             'now': datetime.now(),
+            'debug': True,
             'record': False,
         })
         vals = self.apply_mapping(data, metadata)
@@ -224,6 +225,8 @@ class ExternalDataFieldMapping(models.Model):
         if post:
             metadata.update(pre_post='post')
             self.rule_ids_post.apply_rules(vals, metadata)
+        if metadata.get('drop'):
+            vals = {}
         if prune:
             implicit_keys = set(vals.keys()) - set(metadata['processed_keys'])
             for key in implicit_keys:

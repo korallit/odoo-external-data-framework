@@ -140,9 +140,21 @@ class ExternalDataRule(models.Model):
         'ir.model',
         "Model",
     )
-    condition = fields.Char(
+    condition = fields.Text(
+        "Conditions",
         help="A python expression that evaluates to a boolean (default=True). "
         "Available variables: vals(dict), metadata(dict)."
+    )
+    condition_operator = fields.Selection(
+        string="Logical operator",
+        selection=[
+            ('all', "all"),
+            ('any', "any"),
+        ],
+        help=(
+            "If set, value has to be a comma separated list of expressions, "
+            "free form expected otherwise."
+        )
     )
 
     @api.model
@@ -166,7 +178,12 @@ class ExternalDataRule(models.Model):
         for rule in self:
             metadata.update(key=rule.key)
             if rule.condition:
-                if not bool(rule._eval_expr(rule.condition, vals, metadata)):
+                operator = rule.condition_operator
+                if operator:
+                    conditions = operator + "([" + rule.condition + "])"
+                else:
+                    conditions = "(" + rule.condition + ")"
+                if not bool(rule._eval_expr(conditions, vals, metadata)):
                     continue
             if rule.operation == 'drop':
                 metadata.update(drop=True)

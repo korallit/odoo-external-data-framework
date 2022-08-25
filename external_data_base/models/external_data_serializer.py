@@ -95,6 +95,7 @@ class ExternalDataParserLine(models.Model):
     _order = 'sequence'
 
     name = fields.Char(compute='_compute_name')
+    active = fields.Boolean(default=True)
     sequence = fields.Integer(default=1)
     serializer_id = fields.Many2one(
         'external.data.serializer',
@@ -179,6 +180,7 @@ class ExternalDataParserLine(models.Model):
             # getting toplpevel rules for foreign type
             rules = self.filtered(
                 lambda r:
+                r.active and
                 not r.parent_id and
                 r.foreign_type_id.id == foreign_type_id
             )
@@ -197,7 +199,10 @@ class ExternalDataParserLine(models.Model):
             foreign_type_id, data, vals=vals,
         )
         if generator is not None and gen_rule_id:
-            child_rules = self.search([('parent_id', '=', gen_rule_id)])
+            child_rules = self.search([
+                ('parent_id', '=', gen_rule_id),
+                ('active', '=', True),
+            ])
             for child_data in generator:
                 gen = self.object_data_generator(
                     child_rules, child_data, vals=vals)
