@@ -145,6 +145,7 @@ class ExternalDataRule(models.Model):
         help="A python expression that evaluates to a boolean (default=True). "
         "Available variables: vals(dict), metadata(dict)."
     )
+    condition_negate = fields.Boolean("Not")
     condition_operator = fields.Selection(
         string="Logical operator",
         selection=[
@@ -183,6 +184,8 @@ class ExternalDataRule(models.Model):
                     conditions = operator + "([" + rule.condition + "])"
                 else:
                     conditions = "(" + rule.condition + ")"
+                if rule.condition_negate:
+                    conditions = "not " + conditions
                 if not bool(rule._eval_expr(conditions, vals, metadata)):
                     continue
             if rule.operation == 'drop':

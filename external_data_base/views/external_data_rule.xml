@@ -72,6 +72,7 @@
 			</page>
 			<page string="Conditions">
 			    <group>
+				<field name="condition_negate"/>
 				<field name="condition_operator"/>
 			    </group>
 			    <field name="condition" nolabel="1" style="font-family: monospace;" class="bg-dark text-light"/>
