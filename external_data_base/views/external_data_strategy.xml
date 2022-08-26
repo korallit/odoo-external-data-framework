@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record model="ir.ui.view" id="external_data_strategy_list_view">
+	<field name="name">External Data Strategy</field>
+	<field name="model">external.data.strategy</field>
+	<field name="arch" type="xml">
+	    <tree>
+		<field name="priority" widget="handle"/>
+		<field name="name"/>
+		<field name="operation"/>
+		<field name="transporter_id"/>
+		<field name="serializer_id"/>
+	    </tree>
+	</field>
+    </record>
+
     <record model="ir.ui.view" id="external_data_strategy_form_view">
 	<field name="name">External Data Strategy</field>
 	<field name="model">external.data.strategy</field>
 	<field name="arch" type="xml">
 	    <form>
 		<sheet>
-		    <group>
+		    <group col="3">
 			<field name="name"/>
 			<field name="data_source_id"/>
 			<field name="operation"/>

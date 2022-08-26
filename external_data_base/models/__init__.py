@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from . import ir_http
 from . import external_data_source
 from . import external_data_object
 from . import external_data_transporter

@@ -101,13 +101,4 @@
 	</field>
     </record>
 
-    <record model="external.data.rule" id="list_rule_data_source_id">
-	<field name="pre_post">pre</field>
-	<field name="name">data_source_id from metadata</field>
-	<field name="key">data_source_id</field>
-	<field name="sequence">1</field>
-	<field name="operation">eval</field>
-	<field name="eval_str">metadata.get('data_source_id')</field>
-    </record>
-
 </odoo>

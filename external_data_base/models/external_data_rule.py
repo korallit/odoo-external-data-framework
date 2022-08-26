@@ -85,7 +85,7 @@ class ExternalDataRule(models.Model):
             ('lambda',
              "lambda expression evaluated to value ('v' in input)."
              "Other values can be injected in '{}' brackets."
-            ),
+             ),
             (
                 'eval', "Evaluates the given expression. "
                 "Available variables: vals(dict), metadata(dict)."
@@ -94,16 +94,16 @@ class ExternalDataRule(models.Model):
             ('orm_expr', "Valid formats (parts are optional):\n"
              "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
              "model.search(domain, limit).filtered(lmabda).field"
-            ),
+             ),
             ('object_link', "Searches a linked external object by "
              "data source, mapping and value as foreign ID."
-            ),
+             ),
             ('apply_field_mapping',
              "Apply field mapping on recordset browsed by given id(s)"
              ),
             ('fetch_binary', "Fetches a binary from URL and "
              "encodes it to base64 byte object"
-            ),
+             ),
             ('binary_url', "Returns url(s) of image/attachment"),
         ],
         readonly=True,
@@ -259,10 +259,10 @@ class ExternalDataRule(models.Model):
         self.ensure_one()
         if not value:
             value = ''
-        pattern = re.compile(self.sub_pattern) if self.sub_pattern else '.*'
+        pattern = re.compile(self.sub_pattern) if self.sub_pattern else '^.*$'
         repl = self.sub_repl.format(**vals) if self.sub_repl else ''
-        count = int(self.sub_count)  # converts False to 0
-        return re.sub(pattern, repl, value, count=count)
+        count = self.sub_count
+        return re.sub(pattern, repl, value, count=count, flags=re.DOTALL)
 
     def _parse_time(self, value):
         self.ensure_one()

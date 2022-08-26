@@ -14,6 +14,7 @@ _logger = logging.getLogger(__name__)
 class ExternalDataStrategy(models.Model):
     _name = 'external.data.strategy'
     _description = "External Data Strategy"
+    _order = 'priority'
 
     name = fields.Char(required=True)
     operation = fields.Selection(
@@ -22,6 +23,8 @@ class ExternalDataStrategy(models.Model):
             ('list', "list"),
             ('pull', "pull"),
             ('push', "push"),
+            ('edit', "mass edit"),
+            ('rest', "rest"),
         ],
         required=True,
     )
@@ -60,6 +63,15 @@ class ExternalDataStrategy(models.Model):
         default=True,
     )
     batch_size = fields.Integer("Batch size", default=10)
+
+    def button_details(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "external.data.strategy",
+            "views": [[False, "form"]],
+            "res_id": self.id,
+        }
 
     @api.model
     def get_strategy(self, operation=False,
@@ -194,14 +206,11 @@ class ExternalDataStrategy(models.Model):
                 debug_metadata[foreign_type.name] = []
 
             # map & process
-            index = 0
-            for data in data_generator:
-                index += 1
+            for index, data in enumerate(data_generator):
                 foreign_id = data.get(metadata['foreign_id_key'])
                 if not foreign_id:
-                    _logger.error(
-                        f"Missing foreign ID from resource {resource_name}"
-                    )
+                    msg = f"Missing foreign ID from resource {resource_name}"
+                    _logger.error(msg)
                     continue
                 metadata.update({
                     'index': index,
@@ -222,99 +231,59 @@ class ExternalDataStrategy(models.Model):
                     'priority': index,
                 })
 
-                record = False
                 for field_mapping in field_mappings:
                     metadata.update({
                         'field_mapping_id': field_mapping.id,
                         'model_id': field_mapping.model_id.id,
                         'model_model': field_mapping.model_id.model,
-                        'pre_post': 'pre',
                     })
-
-                    # get record and external object
-                    preprocess_rules = field_mapping.rule_ids_pre
-                    record = ext_object = False
-                    if metadata['operation'] == 'list':  # no external object
-                        record = metadata['record'] = resource.search([
-                            ('url', '=', foreign_id),
-                        ], limit=1)  # TODO: check if found more than one
-                        if record:
-                            res_last_mod = record.last_mod  # for later
-                            if not res_last_mod:
-                                continue
-                        ext_id = 'external_data_base.list_rule_data_source_id'
-                        preprocess_rules += self.env.ref(ext_id)
+                    if metadata['operation'] == 'pull':
+                        vals = self._pull(
+                            resource, field_mapping,
+                            external_objects, object_vals,
+                            data, metadata,
+                        )
+                    elif metadata['operation'] == 'list':
+                        vals = self._list(
+                            resource, field_mapping,
+                            external_objects, object_vals,
+                            data, metadata,
+                        )
                     else:
-                        for o in external_objects:
-                            if o.foreign_id == foreign_id:
-                                o.resource_ids = [Command.link(resource_id)]
-                                ext_object = o
-                                break
-                        if not (ext_object or metadata['deferred_create']):
-                            ext_object = external_objects.create(object_vals)
-                            external_objects += ext_object
-                        if ext_object.link_similar_objects(**metadata):
-                            record = metadata['record'] = ext_object._record(
-                                metadata['model_id'])
-                        preprocess_rules += ext_object.rule_ids_pre
-
-                    # pre processing
-                    vals = field_mapping.apply_mapping(data, metadata)
-                    preprocess_rules.apply_rules(vals, metadata)
-                    if metadata.get('drop'):
-                        if record and metadata.get('delete'):
-                            record.unlink()
                         continue
-                    self._prune_vals(vals, **metadata)
-
-                    # save vals for deferred create and continue
-                    if not record and metadata['deferred_create']:
-                        if external_objects.sanitize_values(vals, **metadata):
-                            dc_data = deferred_create_data.get(
-                                metadata['model_model'])
-                            if not dc_data:
-                                dc_data = deferred_create_data[
-                                    metadata['model_model']
-                                ] = {'vals': [], 'data': [], 'object_vals': []}
-                                dc_data.update(metadata)
-
-                            dc_data['vals'].append(vals)
-                            dc_data['data'].append(data.copy())
-                            dc_data['object_vals'].append(object_vals.copy())
+                    if not vals:
                         continue
 
-                    # write record
-                    postprocess_rules = field_mapping.rule_ids_post
-                    if metadata['operation'] == 'list':  # no external object
-                        vals_last_mod = vals.get('last_mod')
-                        if not record and external_objects.sanitize_values(
-                                vals, **metadata):
-                            metadata['record'] = resource.create(vals)
-                        elif vals_last_mod and res_last_mod < vals_last_mod:
-                            msg = f"Updating resource #{index}: {foreign_id}"
-                            _logger.debug(msg)
-                            record.write(vals)
-                    else:
-                        ext_object.write_odoo_record(vals, **metadata)
-                        metadata['record'] = ext_object._record(
-                            metadata['model_id'])
-                        postprocess_rules += ext_object.rule_ids_post
+                    # deferred create
+                    record = metadata.get('record')
+                    if metadata['deferred_create'] and not record:
+                        model_model = metadata['model_model']
+                        dc_data = deferred_create_data.get(model_model)
+                        if not dc_data:
+                            dc_data = deferred_create_data[model_model] = {
+                                'vals': [],
+                                'data': [],
+                                'object_vals': [],
+                            }
+                            dc_data.update(metadata)
+
+                        dc_data['vals'].append(vals)
+                        dc_data['data'].append(data.copy())
+                        dc_data['object_vals'].append(object_vals.copy())
 
                     # post processing
-                    if postprocess_rules:
+                    postprocess_rules = metadata.get('postprocess_rules')
+                    if record and postprocess_rules:
                         metadata.update(pre_post='post')
                         vals = field_mapping.apply_mapping(data, metadata)
                         postprocess_rules.apply_rules(vals, metadata)
                         if metadata.get('drop'):
                             if record and metadata.get('delete'):
                                 record.unlink()
-                            continue
+                            return True
                         self._prune_vals(vals, **metadata)
-                        if metadata['operation'] == 'list':
-                            external_objects.sanitize_values(vals, **metadata)
-                            metadata['record'].write(vals)
-                        else:
-                            ext_object.write_odoo_record(vals, **metadata)
+                        external_objects.sanitize_values(vals, **metadata)
+                        metadata['record'].write(vals)
 
                 resource.last_pull = datetime.now()
 
@@ -326,6 +295,109 @@ class ExternalDataStrategy(models.Model):
             resource.prune_objects(foreign_objects)
         if debug:
             return debug_data, debug_metadata
+
+    def _pull(self, resource, field_mapping,
+              external_objects, object_vals,
+              data, metadata):
+        self.ensure_one()
+
+        foreign_id = metadata.get('foreign_id')
+        resource_id = metadata.get('resource_id')
+        if not (foreign_id and resource_id):
+            return False
+
+        # get record and external object
+        record = ext_object = False
+        for o in external_objects:
+            if o.foreign_id == foreign_id:
+                o.resource_ids = [Command.link(resource_id)]
+                ext_object = o
+                break
+        if not (ext_object or metadata['deferred_create']):
+            ext_object = external_objects.create(object_vals)
+            external_objects += ext_object
+        if ext_object.link_similar_objects(**metadata):
+            record = metadata['record'] = ext_object._record(
+                metadata['model_id'])
+
+        # pre processing
+        metadata.update(pre_post='pre')
+        vals = field_mapping.apply_mapping(data, metadata)
+        preprocess_rules = field_mapping.rule_ids_pre
+        preprocess_rules += ext_object.rule_ids_pre
+        preprocess_rules.apply_rules(vals, metadata)
+        if metadata.get('drop'):
+            if record and metadata.get('delete'):
+                record.unlink()
+            return False
+        self._prune_vals(vals, **metadata)
+
+        # return vals for deferred create
+        if not record and metadata['deferred_create']:
+            if external_objects.sanitize_values(vals, **metadata):
+                return vals
+            else:
+                return False
+
+        # write record
+        ext_object.write_odoo_record(vals, **metadata)
+        metadata['record'] = ext_object._record(metadata['model_id'])
+        metadata['postprocess_rules'] = field_mapping.rule_ids_post
+        metadata['postprocess_rules'] += ext_object.rule_ids_post
+
+    def _list(self, resource, field_mapping,
+              external_objects, object_vals,
+              data, metadata):
+        self.ensure_one()
+
+        foreign_id = metadata.get('foreign_id')
+        resource_id = metadata.get('resource_id')
+        data_source_id = metadata.get('data_source_id')
+        index = metadata.get('index')
+        if not (foreign_id and resource_id and data_source_id):
+            return False
+
+        # get resource
+        record = metadata['record'] = resource.search([
+            ('url', '=', foreign_id),
+        ], limit=1)  # TODO: check if found more than one
+        if record:
+            res_last_mod = record.last_mod  # for later use
+            if not res_last_mod:
+                return False
+
+        # pre processing
+        metadata.update(pre_post='pre')
+        vals = field_mapping.apply_mapping(data, metadata)
+        vals.update(data_source_id=data_source_id)
+        if not metadata.get('processed_keys'):
+            metadata['processed_keys'] = []
+        metadata['processed_keys'].append('resource_id')
+        field_mapping.rule_ids_pre.apply_rules(vals, metadata)
+        if metadata.get('drop'):
+            if record and metadata.get('delete'):
+                record.unlink()
+            return False
+        self._prune_vals(vals, **metadata)
+
+        # return vals for deferred create
+        if not record and metadata['deferred_create']:
+            if external_objects.sanitize_values(vals, **metadata):
+                return vals
+            else:
+                return False
+
+        # write resource
+        vals_last_mod = vals.get('last_mod')
+        if not record and external_objects.sanitize_values(
+                vals, **metadata):
+            metadata['record'] = resource.create(vals)
+        elif vals_last_mod and res_last_mod < vals_last_mod:
+            msg = f"Updating resource #{index}: {foreign_id}"
+            _logger.debug(msg)
+            record.write(vals)
+
+        metadata['postprocess_rules'] = field_mapping.rule_ids_post
 
     def _prune_vals(self, vals, processed_keys, **kw):
         self.ensure_one()
@@ -394,14 +466,64 @@ class ExternalDataStrategy(models.Model):
 
         return True
 
-    def gather_odoo_data(self, field_mapping_id=False):
+    def mass_edit(self, field_mapping_id=False, debug=False):
+        self.ensure_one()
+        if self.operation != 'edit':
+            raise UserError(f"Wrong operation type for edit: {self.operation}")
+
+        debug_data = []
+        metadata = {'updated_ids': []}
+        for vals in self._gather_items(metadata=metadata,
+                                       field_mapping_id=field_mapping_id):
+
+            model_model = metadata.get('model_model')
+            res_id = vals.get('id')
+            try:
+                record = self.env[model_model].browse(res_id).exists()
+            except Exception as e:
+                _logger.error(f"An error occured while retrieving record: {e}")
+                continue
+            if not record:
+                _logger.error(
+                    f"Could not find record: ({model_model}, {res_id})")
+                continue
+
+            self.env['external.data.object'].sanitize_values(vals, **metadata)
+            metadata['updated_ids'].append(res_id)
+
+            if debug:
+                debug_data.append({
+                    'before': record.read(vals.keys()),
+                    'after': vals,
+                })
+            else:
+                record.write(vals)
+
+        if debug:
+            return debug_data
+
+    def push(self, field_mapping_id=False):
+        self.ensure_one()
+        if self.operation != 'push':
+            raise UserError(f"Wrong operation type for push: {self.operation}")
+
+        batch = []  # TODO: gather batch if possible, send if filled or no more
+        metadata = {}
+        for vals in self._gather_items(metadata=metadata,
+                                       field_mapping_id=field_mapping_id):
+
+            data = self.serializer_id.serialize(vals)
+            result = self.transporter_id.deliver(data)
+            # TODO: refresh resources, external objects from result
+
+    def _gather_items(self, metadata, field_mapping_id=False, res_id=False):
         self.ensure_one()
         if not self.field_mapping_ids:
             raise UserError("No field mapping defined")
-        if field_mapping_id:
-            mapping = self.field_mapping_ids.filtered(
-                lambda r: r.id == field_mapping_id
-            )
+
+        mapping = self.field_mapping_ids.filtered(
+            lambda r: r.id == field_mapping_id
+        )
         if not mapping:
             mapping = self.field_mapping_ids[0]
 
@@ -410,43 +532,36 @@ class ExternalDataStrategy(models.Model):
             domain = expression.normalize_domain(eval(domain_str))
         else:
             domain = []
+
+        if res_id:
+            domain.append(('id', '=', res_id))
         records = self.env[mapping.model_model].search(
             domain, limit=self.batch_size)
+        if not records:
+            raise UserError("No records found")
 
-        foreign_type = mapping.foreign_type_id
         metadata.update({
             'field_mapping_id': mapping.id,
             'model_id': mapping.model_id.id,
             'model_model': mapping.model_id.model,
-            'foreign_type_id': foreign_type.id,
-            'foreign_type_name': foreign_type.name,
-            'foreign_id_key': foreign_type.field_ids[0].name,
             'now': datetime.now(),
-            'operation': 'pull',
+            'operation': self.operation,
             'pre_post': 'pre',
-            'prune_false': False,
+            'prune_false': self.prune_vals,
         })
-        result = []
+        if self.operation != 'edit':
+            foreign_type = mapping.foreign_type_id
+            metadata.update({
+                'foreign_type_id': foreign_type.id,
+                'foreign_type_name': foreign_type.name,
+                'foreign_id_key': foreign_type.field_ids[0].name,
+            })
         for data in records:
             metadata['record'] = data
             vals = mapping.apply_mapping(data, metadata)
             mapping.rule_ids_pre.apply_rules(vals, metadata)
             if metadata.get('drop'):
-                vals = {}
-            if prune:
-                processed_keys = set(metadata['processed_keys'].append('id'))
-                implicit_keys = set(vals.keys()) - processed_keys
-                for key in implicit_keys:
-                    vals.pop(key)
-            self.env['external.data.object'].sanitize_values(vals, **metadata)
-            result.append(vals.copy())
-        return result
+                continue
 
-    def button_details(self):
-        self.ensure_one()
-        return {
-            "type": "ir.actions.act_window",
-            "res_model": "external.data.strategy",
-            "views": [[False, "form"]],
-            "res_id": self.id,
-        }
+            self._prune_vals(vals, **metadata)
+            yield vals.copy()

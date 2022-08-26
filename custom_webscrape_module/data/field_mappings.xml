@@ -4,7 +4,7 @@
     <!-- category -->
     <record model="external.data.field.mapping" id="meleget_hu_mapping_category">
         <field name="data_source_id" ref="meleget_hu_data_source"/>
-        <field name="strategy_id" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
+        <field name="strategy_ids" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
         <field name="name">category &gt; public.category</field>
 	<field name="sequence">1</field>
         <field name="model_id" ref="website_sale.model_product_public_category"/>
@@ -38,7 +38,7 @@
     <!-- product -->
     <record model="external.data.field.mapping" id="meleget_hu_mapping_product">
         <field name="data_source_id" ref="meleget_hu_data_source"/>
-        <field name="strategy_id" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
+        <field name="strategy_ids" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
         <field name="name">product &gt; product.template</field>
 	<field name="sequence">2</field>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_product"/>
@@ -92,7 +92,7 @@
     <!-- pricelist item -->
     <record model="external.data.field.mapping" id="meleget_hu_mapping_product_pricelist_item">
         <field name="data_source_id" ref="meleget_hu_data_source"/>
-        <field name="strategy_id" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
+        <field name="strategy_ids" eval="[(4, ref('meleget_hu_strategy_pull'), 0)]"/>
         <field name="name">product &gt; product.pricelist.item</field>
 	<field name="sequence">3</field>
 	<field name="foreign_type_id" ref="meleget_hu_foreign_type_product"/>

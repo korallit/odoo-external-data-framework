@@ -41,7 +41,7 @@
     <!-- List Field Mapping -->
     <record model="external.data.field.mapping" id="meleget_hu_mapping_sitemap">
         <field name="data_source_id" ref="meleget_hu_data_source"/>
-        <field name="strategy_id" eval="[(4, ref('meleget_hu_strategy_list'), 0)]"/>
+        <field name="strategy_ids" eval="[(4, ref('meleget_hu_strategy_list'), 0)]"/>
         <field name="name">url &gt; sitemap</field>
 	<field name="sequence">1</field>
         <field name="model_id" ref="external_data_base.model_external_data_resource"/>

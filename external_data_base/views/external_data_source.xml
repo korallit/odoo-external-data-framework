@@ -6,6 +6,15 @@
 	<field name="res_model">external.data.source</field>
     </record>
 
+    <record id="open_list_strategy_list" model="ir.actions.act_window">
+	<field name="name">External Data Strategy</field>
+	<field name="res_model">external.data.strategy</field>
+	<field name="views">[(False, 'tree'), (False, 'form')]</field>
+	<field name="view_mode">tree,form</field>
+	<field name="domain">[('operation', '=', 'list'), ('data_source_id', '=', active_id)]</field>
+	<field name="target">new</field>
+    </record>
+
     <!-- Views -->
     <record id="external_data_source_list_view" model="ir.ui.view">
 	<field name="name">External Data sources</field>
@@ -24,9 +33,11 @@
 	<field name="arch" type="xml">
 	    <form>
 		<sheet>
-		    <group>
+		    <group col="3">
 			<field name="name"/>
 			<field name="list_strategy_id"/>
+			<button string="choose list strategy" type="action"
+				name="external_data_base.open_list_strategy_list"/>
 			<field name="last_fetch"/>
 		    </group>
 		    <notebook>
@@ -59,6 +70,32 @@
 			<page string="Push strategies">
 			    <field name="push_strategy_ids">
 				<tree context="{'default_operation': 'push'}">
+				    <field name="priority" widget="handle"/>
+				    <field name="name"/>
+				    <button string="open" type="object"
+					    name="button_details"
+					    />
+				    <field name="transporter_id"/>
+				    <field name="serializer_id"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="REST strategies">
+			    <field name="rest_strategy_ids">
+				<tree context="{'default_operation': 'rest'}">
+				    <field name="priority" widget="handle"/>
+				    <field name="name"/>
+				    <button string="open" type="object"
+					    name="button_details"
+					    />
+				    <field name="transporter_id"/>
+				    <field name="serializer_id"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Mass edit strategies">
+			    <field name="edit_strategy_ids">
+				<tree context="{'default_operation': 'edit'}">
 				    <field name="priority" widget="handle"/>
 				    <field name="name"/>
 				    <button string="open" type="object"

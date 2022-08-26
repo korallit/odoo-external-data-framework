@@ -1,6 +1,5 @@
 # coding: utf-8
 
-import json
 import logging
 
 from odoo import api, fields, models
@@ -114,7 +113,7 @@ class ExternalDataFieldMapping(models.Model):
     )
     model_model = fields.Char(related='model_id.model')
     filter_domain = fields.Char("Filter")
-    foreign_type_id = fields.Many2one(
+    foreign_type_id = fields.Many2one(  # TODO: required if not mass edit
         'external.data.type',
         string="Foreign Type",
     )
@@ -124,7 +123,7 @@ class ExternalDataFieldMapping(models.Model):
         required=True,
         ondelete='cascade',
     )
-    strategy_id = fields.Many2many(
+    strategy_ids = fields.Many2many(
         'external.data.strategy',
         string="Strategy",
         domain="['data_source_id', '=', data_source_id]",
@@ -162,6 +161,9 @@ class ExternalDataFieldMapping(models.Model):
             field_mapping_lines = field_mapping_lines.filtered(
                 lambda l: not l.pre_post or l.pre_post == pre_post
             )
+        if 'processed_keys' not in metadata.keys():
+            metadata['processed_keys'] = []
+
         if isinstance(data, dict):  # pull
             source_field = 'foreign_field_id'
             target_field = 'odoo_field_id'
@@ -173,14 +175,15 @@ class ExternalDataFieldMapping(models.Model):
 
             source_keys = field_mapping_lines.mapped('odoo_field_id.name')
             vals = data.read(source_keys)[0]
+            metadata['processed_keys'].append('id')
         else:
             raise ValidationError(
                 "Mapping can process a dictionary (pull) "
                 "or an odoo record (push)."
             )
 
-        if 'processed_keys' not in metadata.keys():
-            metadata['processed_keys'] = []
+        if metadata.get('operation') == 'edit':
+            return vals
 
         for mapping_line in field_mapping_lines:
             source_key = mapping_line[source_field].name
@@ -195,8 +198,8 @@ class ExternalDataFieldMapping(models.Model):
     def button_details(self):
         self.ensure_one()
         return {
-            "type": "ir.actions.act_window",
-            "res_model": "external.data.field.mapping",
-            "views": [[False, "form"]],
-            "res_id": self.id,
+            'type': 'ir.actions.act_window',
+            'res_model': 'external.data.field.mapping',
+            'views': [(False, 'form')],
+            'res_id': self.id,
         }

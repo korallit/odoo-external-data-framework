@@ -4,7 +4,7 @@ import logging
 
 from odoo import api, fields, models
 from odoo.fields import Command
-from odoo.exceptions import MissingError, UserError
+from odoo.exceptions import MissingError
 
 _logger = logging.getLogger(__name__)
 
@@ -36,6 +36,18 @@ class ExternalDataSource(models.Model):
         string="Push strategies",
         inverse_name='data_source_id',
         domain=[('operation', '=', 'push')],
+    )
+    rest_strategy_ids = fields.One2many(
+        'external.data.strategy',
+        string="Push strategies",
+        inverse_name='data_source_id',
+        domain=[('operation', '=', 'rest')],
+    )
+    edit_strategy_ids = fields.One2many(
+        'external.data.strategy',
+        string="Push strategies",
+        inverse_name='data_source_id',
+        domain=[('operation', '=', 'edit')],
     )
     field_mapping_ids = fields.One2many(
         'external.data.field.mapping',

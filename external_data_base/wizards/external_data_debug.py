@@ -24,17 +24,20 @@ class ExternalDataDebugWizard(models.TransientModel):
         'external.data.strategy',
         string="Strategy",
     )
-    operation = fields.Selection(
+    sub_operation = fields.Selection(
+        string="Operation method",
         selection=[
             ('parse', "parse"),
             ('map', "map"),
-            ('pull', "pull"),
-        ]
+        ],
+        default='map',
     )
-    direction = fields.Selection(
+    operation = fields.Selection(
         selection=[
             ('pull', "pull"),
             ('push', "push"),
+            ('rest', "rest"),
+            ('edit', "mass edit")
         ],
         default='pull',
     )
@@ -64,7 +67,23 @@ class ExternalDataDebugWizard(models.TransientModel):
     @api.onchange('strategy_id')
     def _onchange_strategy_id(self):
         for record in self:
-            record.direction = record.strategy_id.operation
+            record.operation = record.strategy_id.operation
+
+    def run(self):
+        for record in self:
+            record._run()
+
+    def _run(self):
+        self.ensure_one()
+        if self.debug:
+            return False
+
+        if all([self.operation == 'edit',
+                self.strategy_id,
+                self.field_mapping_id,
+                ]):
+            self.strategy_id.mass_edit(
+                field_mapping_id=self.field_mapping_id.id)
 
     def _run_test(self):
         self.ensure_one()
@@ -73,9 +92,9 @@ class ExternalDataDebugWizard(models.TransientModel):
             return
 
         result = False
-        if not self.operation:
-            self.output = "Choose an operation to start!"
-        elif self.operation == 'map' and self.field_mapping_id:
+        if not (self.sub_operation or self.operation):
+            self.output = "Choose an operation method to start!"
+        elif self.sub_operation == 'map' and self.field_mapping_id:
             pre = post = False
             if self.pre_post == 'pre':
                 pre, post = True, False
@@ -88,16 +107,23 @@ class ExternalDataDebugWizard(models.TransientModel):
                 prune=self.prune,
                 sanitize=self.sanitize,
             )
-        elif self.operation == 'parse' and self.resource_id:
+        elif self.sub_operation == 'parse' and self.resource_id:
             result, _ = self.resource_id.test_parser(
                 strategy_id=self.strategy_id.id)
         elif self.operation == 'pull' and self.resource_id:
             result = self.resource_id.test_pull(
                 strategy_id=self.strategy_id.id)
+
+        elif all([self.operation == 'edit',
+                  self.strategy_id,
+                  self.field_mapping_id,
+                  ]):
+            result = self.strategy_id.mass_edit(
+                field_mapping_id=self.field_mapping_id.id, debug=True)
         else:
             self.output = (
                 "Something is missing, or "
-                f"operation '{self.operation}' is not implemented yet..."
+                f"operation '{self.sub_operation}' is not implemented yet..."
             )
 
         if result:
@@ -116,7 +142,7 @@ class ExternalDataDebugWizard(models.TransientModel):
             raise MissingError("No field mapping specified!")
 
         record = False
-        if self.direction == 'push':
+        if self.operation == 'push':
             domain_str = mapping.filter_domain
             if domain_str:
                 domain = expression.normalize_domain(eval(domain_str))
@@ -126,7 +152,7 @@ class ExternalDataDebugWizard(models.TransientModel):
             record = data
 
         try:
-            if self.direction == 'pull' and not data:
+            if self.operation == 'pull' and not data:
                 data = json.loads(mapping.test_data)
             if not metadata:
                 metadata = json.loads(mapping.test_metadata)
@@ -145,7 +171,7 @@ class ExternalDataDebugWizard(models.TransientModel):
             'foreign_type_name': foreign_type.name,
             'foreign_id_key': foreign_type.field_ids[0].name,
             'now': datetime.now(),
-            'operation': self.direction,
+            'operation': self.operation,
             'prune_false': self.sanitize_prune_false,
             'debug': True,
             'record': record,
@@ -191,7 +217,7 @@ class ExternalDataDebugWizard(models.TransientModel):
     def test_pull(self):
         self.ensure_one()
         d_data, d_metadata = self.test_parser()
-        field_mappings_all = strategy.field_mapping_ids
+        field_mappings_all = self.strategy_id.field_mapping_ids
         result = {'parser_output': d_data, 'mapped_data': {}}
         for type_name, data_set in d_data.items():
             metadata_set = d_metadata[type_name]
