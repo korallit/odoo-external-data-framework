@@ -46,6 +46,8 @@ class ExternalDataRule(models.Model):
         ondelete='set null',
         string="Field mapping",
     )
+    model_model = fields.Char(related='field_mapping_id.model_model')
+    data_source_id = fields.Many2one(related='field_mapping_id.data_source_id')
     object_id = fields.Many2one(
         'external.data.object',
         ondelete='set null',
@@ -65,7 +67,9 @@ class ExternalDataRule(models.Model):
             ('orm_ref', "ORM external ID"),
             ('orm_expr', "ORM expression"),
             ('object_link', "Object link"),
+            ('apply_field_mapping', "Field mapping"),
             ('fetch_binary', "Fetch binary"),
+            ('binary_url', "Binary URL"),
         ],
         required=True,
     )
@@ -78,29 +82,29 @@ class ExternalDataRule(models.Model):
             ('replace', "Replace value with re.sub(pattern, repl, count)"),
             ('parse_time', "Parse time by pattern with time.strptime"),
             ('hashtable', "Map parsed data as key to a hashtable"),
-            (
-                'lambda',
-                "lambda expression evaluated to value ('v' in input)."
-                "Other values can be injected in '{}' brackets."
+            ('lambda',
+             "lambda expression evaluated to value ('v' in input)."
+             "Other values can be injected in '{}' brackets."
             ),
             (
                 'eval', "Evaluates the given expression. "
                 "Available variables: vals(dict), metadata(dict)."
             ),
             ('orm_ref', "ORM external ID"),
-            (
-                'orm_expr', "Valid formats (parts are optional):\n"
-                "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
-                "model.search(domain, limit).filtered(lmabda).field"
+            ('orm_expr', "Valid formats (parts are optional):\n"
+             "model.search(domain, limit).filtered(lmabda).mapped(lambda)\n"
+             "model.search(domain, limit).filtered(lmabda).field"
             ),
-            (
-                'object_link', "Searches a linked external object by "
-                "data source, mapping and value as foreign ID."
+            ('object_link', "Searches a linked external object by "
+             "data source, mapping and value as foreign ID."
             ),
-            (
-                'fetch_binary', "Fetches a binary from URL and "
-                "encodes it to base64 byte object"
+            ('apply_field_mapping',
+             "Apply field mapping on recordset browsed by given id(s)"
+             ),
+            ('fetch_binary', "Fetches a binary from URL and "
+             "encodes it to base64 byte object"
             ),
+            ('binary_url', "Returns url(s) of image/attachment"),
         ],
         readonly=True,
         compute="_compute_help",
@@ -139,6 +143,11 @@ class ExternalDataRule(models.Model):
     obj_model_id = fields.Many2one(
         'ir.model',
         "Model",
+    )
+    apply_field_mapping_id =  fields.Many2one(
+        'external.data.field.mapping',
+        string="Field mapping",
+        domain="[('data_source_id', '=', data_source_id)]",
     )
     condition = fields.Text(
         "Conditions",
@@ -208,6 +217,8 @@ class ExternalDataRule(models.Model):
                     hashtable = self._eval_expr(rule.hashtable)
                     if isinstance(hashtable, dict):
                         result = hashtable.get(value)
+                        if isinstance(result, type(None)):
+                            result = False
             elif rule.operation == 'parse_time':
                 result = rule._parse_time(value)
             elif rule.operation == 'lambda' and rule.lambda_str:
@@ -232,6 +243,8 @@ class ExternalDataRule(models.Model):
                 result = rule._orm_expr(value, vals)
             elif rule.operation == 'object_link':
                 result = rule._search_object_link(value)
+            elif rule.operation == 'apply_field_mapping':
+                result = rule.apply_field_mapping(value, metadata.copy())
             elif rule.operation == 'fetch_binary':
                 result = rule._fetch_binary(value)
 
@@ -370,3 +383,43 @@ class ExternalDataRule(models.Model):
         if isinstance(res.content, bytes):
             return b64encode(res.content)
         return None
+
+    def apply_field_mapping(self, ids, metadata):
+        self.ensure_one()
+        if not (ids and self.apply_field_mapping_id):
+            return None
+        model_model = self.apply_field_mapping_id.model_model
+        records = self.env[model_model].browse(ids).exists()
+        if not records:
+            return None
+
+        metadata['processed_keys'] = []
+        if isinstance(ids, int):
+            return self._apply_mapping(records[0], metadata)
+        elif isinstance(ids, list):
+            return [
+                self._apply_mapping(record, metadata)
+                for record in records
+            ]
+
+    def _apply_mapping(self, data, metadata):
+        self.ensure_one()
+        mapping = self.apply_field_mapping_id
+        foreign_type = mapping.foreign_type_id
+        metadata.update({
+            'field_mapping_id': mapping.id,
+            'model_id': mapping.model_id.id,
+            'model_model': mapping.model_id.model,
+            'foreign_type_id': foreign_type.id,
+            'foreign_type_name': foreign_type.name,
+            'foreign_id_key': foreign_type.field_ids[0].name,
+            'now': datetime.now(),
+            'record': data,
+        })
+        vals = mapping.apply_mapping(data, metadata)
+        mapping.rule_ids_pre.apply_rules(vals, metadata)
+        implicit_keys = set(vals.keys()) - set(metadata['processed_keys'])
+        for key in implicit_keys:
+            vals.pop(key)
+        self.env['external.data.object'].sanitize_values(vals, **metadata)
+        return vals

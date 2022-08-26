@@ -67,6 +67,10 @@
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
 	<field name="name">availability</field>
     </record>
+    <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_lead_time">
+	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
+	<field name="name">lead_time</field>
+    </record>
     <record model="external.data.type.field" id="meleget_hu_foreign_type_product_field_category">
 	<field name="foreign_type_id" ref="custom_webscrape_module.meleget_hu_foreign_type_product"/>
 	<field name="name">category</field>

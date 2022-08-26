@@ -1,8 +1,11 @@
 # coding: utf-8
 
 import json
+from datetime import datetime
 
 from odoo import api, fields, models
+from odoo.osv import expression
+from odoo.exceptions import MissingError, ValidationError
 
 
 class ExternalDataDebugWizard(models.TransientModel):
@@ -28,9 +31,17 @@ class ExternalDataDebugWizard(models.TransientModel):
             ('pull', "pull"),
         ]
     )
+    direction = fields.Selection(
+        selection=[
+            ('pull', "pull"),
+            ('push', "push"),
+        ],
+        default='pull',
+    )
     debug = fields.Boolean(default=True)
     prune = fields.Boolean(default=True)
     sanitize = fields.Boolean(default=True)
+    sanitize_prune_false = fields.Boolean(default=True)
     pre_post = fields.Selection(
         string="pre/post",
         selection=[
@@ -50,6 +61,11 @@ class ExternalDataDebugWizard(models.TransientModel):
                 record._run_test()
                 record.button_run = False
 
+    @api.onchange('strategy_id')
+    def _onchange_strategy_id(self):
+        for record in self:
+            record.direction = record.strategy_id.operation
+
     def _run_test(self):
         self.ensure_one()
         if not self.debug:
@@ -67,7 +83,7 @@ class ExternalDataDebugWizard(models.TransientModel):
                 pre, post = False, True
             elif self.pre_post == 'all':
                 pre = post = True
-            result = self.field_mapping_id.test_mapping(
+            result = self.test_mapping(
                 pre=pre, post=post,
                 prune=self.prune,
                 sanitize=self.sanitize,
@@ -88,3 +104,128 @@ class ExternalDataDebugWizard(models.TransientModel):
             self.output = json.dumps(
                 result, ensure_ascii=False, indent=4, default=str,
             )
+
+    def test_mapping(self, data=False, metadata=False,
+                     pre=True, post=False, prune=True, sanitize=True,
+                     field_mapping_id=False):
+        self.ensure_one()
+        mapping = self.field_mapping_id
+        if field_mapping_id:
+            mapping = mapping.browse(field_mapping_id).exists()
+        if not mapping:
+            raise MissingError("No field mapping specified!")
+
+        record = False
+        if self.direction == 'push':
+            domain_str = mapping.filter_domain
+            if domain_str:
+                domain = expression.normalize_domain(eval(domain_str))
+            else:
+                domain = []
+            data = self.env[mapping.model_model].search(domain, limit=1)
+            record = data
+
+        try:
+            if self.direction == 'pull' and not data:
+                data = json.loads(mapping.test_data)
+            if not metadata:
+                metadata = json.loads(mapping.test_metadata)
+        except json.decoder.JSONDecodeError:
+            raise ValidationError("Invalid JSON test data")
+
+        if not data:
+            raise ValidationError("No test data")
+
+        foreign_type = mapping.foreign_type_id
+        metadata.update({
+            'field_mapping_id': mapping.id,
+            'model_id': mapping.model_id.id,
+            'model_model': mapping.model_id.model,
+            'foreign_type_id': foreign_type.id,
+            'foreign_type_name': foreign_type.name,
+            'foreign_id_key': foreign_type.field_ids[0].name,
+            'now': datetime.now(),
+            'operation': self.direction,
+            'prune_false': self.sanitize_prune_false,
+            'debug': True,
+            'record': record,
+        })
+        vals = mapping.apply_mapping(data, metadata)
+        if pre:
+            metadata.update(pre_post='pre')
+            mapping.rule_ids_pre.apply_rules(vals, metadata)
+        if post:
+            metadata.update(pre_post='post')
+            mapping.rule_ids_post.apply_rules(vals, metadata)
+        if metadata.get('drop'):
+            vals = {}
+        if prune:
+            implicit_keys = set(vals.keys()) - set(metadata['processed_keys'])
+            for key in implicit_keys:
+                vals.pop(key)
+        sane = "N/A"
+        if sanitize:
+            sane = self.env['external.data.object'].sanitize_values(
+                vals, **metadata)
+
+        result = {'vals': vals, 'metadata': metadata, 'sane_for_create': sane}
+        return result
+
+    def test_parser(self):
+        self.ensure_one()
+        strategy = self.strategy_id
+        resource = self.resource_id
+        if not resource.exists():
+            raise MissingError("Please specify a resource!")
+        if not strategy.exists():
+            strategy = strategy.get_strategy(
+                operation='pull',
+                resource_ids=resource.ids,
+            )
+        if not strategy:
+            raise MissingError("Couldn't find strategy")
+
+        debug_data, _ = strategy.pull_resource(resource.id, debug=True)
+        return debug_data, _
+
+    def test_pull(self):
+        self.ensure_one()
+        d_data, d_metadata = self.test_parser()
+        field_mappings_all = strategy.field_mapping_ids
+        result = {'parser_output': d_data, 'mapped_data': {}}
+        for type_name, data_set in d_data.items():
+            metadata_set = d_metadata[type_name]
+            for i, data in enumerate(data_set):
+                metadata = metadata_set[i]
+                foreign_type_id = metadata.get('foreign_type_id')
+                field_mappings = field_mappings_all.filtered(
+                    lambda m: m.foreign_type_id.id == foreign_type_id
+                )
+                for field_mapping in field_mappings:
+                    res = self.test_mapping(
+                        data, metadata, field_mapping_id=field_mapping.id)
+                    result['mapped_data'][field_mapping.name] = res
+
+        return result
+
+
+class ExternalDataFieldSelector(models.TransientModel):
+    _name = 'external.data.field.selector'
+    _description = "External Data Field Selector"
+
+    model_model = fields.Char()
+    field_id = fields.Many2one(
+        'ir.model.fields',
+        string="Field",
+        domain="[('model', '=', model_model)]",
+    )
+
+    def set_key(self):
+        for record in self:
+            ctx = self.env.context
+            model = ctx.get('active_model')
+            rule_id = ctx.get('active_id')
+            if rule_id and model == 'external.data.rule':
+                rule = self.env[model].browse(rule_id).exists()
+                if rule:
+                    rule.key = record.field_id.name

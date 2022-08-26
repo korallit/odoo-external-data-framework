@@ -58,7 +58,7 @@
 			</page>
 			<page string="Push strategies">
 			    <field name="push_strategy_ids">
-				<tree editable="bottom">
+				<tree context="{'default_operation': 'push'}">
 				    <field name="priority" widget="handle"/>
 				    <field name="name"/>
 				    <button string="open" type="object"

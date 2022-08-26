@@ -7,17 +7,32 @@
 	<field name="res_model">external.data.rule</field>
     </record>
 
+    <record model="ir.actions.act_window" id="launch_field_selector">
+	<field name="name">Launch field selector</field>
+	<field name="res_model">external.data.field.selector</field>
+	<field name="view_mode">form</field>
+	<field name="views" eval="[(False, 'form')]"/>
+	<field name="target">new</field>
+    </record>
+
     <!-- Views -->
     <record id="external_data_rule_form_view" model="ir.ui.view">
 	<field name="name">External Data Process Rule</field>
 	<field name="model">external.data.rule</field>
 	<field name="arch" type="xml">
 	    <form>
+		<field name="data_source_id" invisible="1"/>
+		<field name="model_model" invisible="1"/>
 		<sheet>
 		    <group>
 			<field name="name"/>
 			<field name="pre_post"/>
+		    </group>
+		    <group col="3">
 			<field name="key"/>
+			<button string="select" class="btn btn-secondary btn-sm"
+				type="action" name="external_data_base.launch_field_selector"
+				context="{'default_model_model': model_model}"/>
 		    </group>
 		    <group>
 			<field name="field_mapping_id"/>
@@ -68,6 +83,9 @@
 				<field name="obj_mapping_id" domain="[('data_source_id', '=', obj_source_id)]"/>
 				<field name="obj_foreign_type_id"/>
 				<field name="obj_model_id"/>
+			    </group>
+			    <group attrs="{'invisible': [('operation', '!=', 'apply_field_mapping')]}">
+				<field name="apply_field_mapping_id"/>
 			    </group>
 			</page>
 			<page string="Conditions">

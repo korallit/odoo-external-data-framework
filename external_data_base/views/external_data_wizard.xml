@@ -12,6 +12,7 @@
 		    <field name="resource_id"/>
 		    <field name="operation"/>
 		    <field name="strategy_id"/>
+		    <field name="direction"/>
 		    <field name="debug"/>
 		</group>
 		<group col="4">
@@ -26,6 +27,24 @@
 		       style="font-family: monospace;"/>
 		<footer id="button_box">
 		    <button string="close" special="cancel"/>
+		</footer>
+	    </form>
+	</field>
+    </record>
+
+    <record id="field_selector_form_view" model="ir.ui.view">
+	<field name="name">External Data Field Selector</field>
+	<field name="model">external.data.field.selector</field>
+	<field name="arch" type="xml">
+	    <form>
+		<field name="model_model" invisible="1"/>
+		<group>
+		    <field name="field_id"/>
+		</group>
+		<footer>
+		    <button special="cancel" string="close"/>
+		    <button type="object" name="set_key" string="set" class="btn btn-primary float-right"
+			    attrs="{'invisible': [('field_id', '=', False)]}"/>
 		</footer>
 	    </form>
 	</field>

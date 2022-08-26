@@ -149,52 +149,6 @@ class ExternalDataResource(models.Model):
         if strategy:
             strategy.pull_resource(self.id, sync=sync, prune=prune)
 
-    def test_parser(self, strategy_id=False):  # TODO: move to wizard
-        self.ensure_one()
-        strategy = self.env['external.data.strategy']
-        if strategy_id:
-            strategy = strategy.browse(strategy_id)
-        if not strategy.exists():
-            strategy = strategy.get_strategy(
-                operation='pull',
-                resource_ids=self.ids,
-            )
-        if not strategy:
-            raise MissingError("Couldn't find strategy")
-
-        debug_data, _ = strategy.pull_resource(self.id, debug=True)
-        return debug_data, _
-
-    def test_pull(self, strategy_id=False):
-        self.ensure_one()
-        strategy = self.env['external.data.strategy']
-        if strategy_id:
-            strategy = strategy.browse(strategy_id)
-        if not strategy.exists():
-            strategy = strategy.get_strategy(
-                operation='pull',
-                resource_ids=self.ids,
-            )
-        if not strategy:
-            raise MissingError("Couldn't find strategy")
-
-        d_data, d_metadata = strategy.pull_resource(self.id, debug=True)
-        field_mappings_all = strategy.field_mapping_ids
-        result = {'parser_output': d_data, 'mapped_data': {}}
-        for type_name, data_set in d_data.items():
-            metadata_set = d_metadata[type_name]
-            for i, data in enumerate(data_set):
-                metadata = metadata_set[i]
-                foreign_type_id = metadata.get('foreign_type_id')
-                field_mappings = field_mappings_all.filtered(
-                    lambda m: m.foreign_type_id.id == foreign_type_id
-                )
-                for field_mapping in field_mappings:
-                    res = field_mapping.test_mapping(data, metadata)
-                    result['mapped_data'][field_mapping.name] = res
-
-        return result
-
     def batch_pull(self, strategy_id=False, sync=False, prune=False):
         strategy = self.env['external.data.strategy']
         if strategy_id:

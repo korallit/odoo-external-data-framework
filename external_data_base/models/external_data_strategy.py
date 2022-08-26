@@ -4,6 +4,7 @@ from datetime import datetime
 
 from odoo import api, fields, models
 from odoo.fields import Command
+from odoo.osv import expression
 from odoo.exceptions import MissingError, UserError
 
 import logging
@@ -392,6 +393,54 @@ class ExternalDataStrategy(models.Model):
             })
 
         return True
+
+    def gather_odoo_data(self, field_mapping_id=False):
+        self.ensure_one()
+        if not self.field_mapping_ids:
+            raise UserError("No field mapping defined")
+        if field_mapping_id:
+            mapping = self.field_mapping_ids.filtered(
+                lambda r: r.id == field_mapping_id
+            )
+        if not mapping:
+            mapping = self.field_mapping_ids[0]
+
+        domain_str = mapping.filter_domain
+        if domain_str:
+            domain = expression.normalize_domain(eval(domain_str))
+        else:
+            domain = []
+        records = self.env[mapping.model_model].search(
+            domain, limit=self.batch_size)
+
+        foreign_type = mapping.foreign_type_id
+        metadata.update({
+            'field_mapping_id': mapping.id,
+            'model_id': mapping.model_id.id,
+            'model_model': mapping.model_id.model,
+            'foreign_type_id': foreign_type.id,
+            'foreign_type_name': foreign_type.name,
+            'foreign_id_key': foreign_type.field_ids[0].name,
+            'now': datetime.now(),
+            'operation': 'pull',
+            'pre_post': 'pre',
+            'prune_false': False,
+        })
+        result = []
+        for data in records:
+            metadata['record'] = data
+            vals = mapping.apply_mapping(data, metadata)
+            mapping.rule_ids_pre.apply_rules(vals, metadata)
+            if metadata.get('drop'):
+                vals = {}
+            if prune:
+                processed_keys = set(metadata['processed_keys'].append('id'))
+                implicit_keys = set(vals.keys()) - processed_keys
+                for key in implicit_keys:
+                    vals.pop(key)
+            self.env['external.data.object'].sanitize_values(vals, **metadata)
+            result.append(vals.copy())
+        return result
 
     def button_details(self):
         self.ensure_one()

@@ -2,7 +2,6 @@
 
 import json
 import logging
-from datetime import datetime
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -118,8 +117,6 @@ class ExternalDataFieldMapping(models.Model):
     foreign_type_id = fields.Many2one(
         'external.data.type',
         string="Foreign Type",
-        required=True,
-        ondelete='restrict',
     )
     data_source_id = fields.Many2one(
         'external.data.source',
@@ -194,52 +191,6 @@ class ExternalDataFieldMapping(models.Model):
             metadata['processed_keys'].append(target_key)
 
         return vals
-
-    def test_mapping(self, data=False, metadata=False,
-                     pre=True, post=False, prune=True, sanitize=True):
-        self.ensure_one()
-        try:
-            if not data:
-                data = json.loads(self.test_data)
-            if not metadata:
-                metadata = json.loads(self.test_metadata)
-        except json.decoder.JSONDecodeError:
-            raise ValidationError("Invalid JSON test data")
-        if not data:
-            raise ValidationError("No test data")
-
-        foreign_type = self.foreign_type_id
-        metadata.update({
-            'field_mapping_id': self.id,
-            'model_id': self.model_id.id,
-            'model_model': self.model_id.model,
-            'foreign_type_id': foreign_type.id,
-            'foreign_type_name': foreign_type.name,
-            'foreign_id_key': foreign_type.field_ids[0].name,
-            'now': datetime.now(),
-            'debug': True,
-            'record': False,
-        })
-        vals = self.apply_mapping(data, metadata)
-        if pre:
-            metadata.update(pre_post='pre')
-            self.rule_ids_pre.apply_rules(vals, metadata)
-        if post:
-            metadata.update(pre_post='post')
-            self.rule_ids_post.apply_rules(vals, metadata)
-        if metadata.get('drop'):
-            vals = {}
-        if prune:
-            implicit_keys = set(vals.keys()) - set(metadata['processed_keys'])
-            for key in implicit_keys:
-                vals.pop(key)
-        sane = "N/A"
-        if sanitize:
-            sane = self.env['external.data.object'].sanitize_values(
-                vals, **metadata)
-
-        result = {'vals': vals, 'metadata': metadata, 'sane_for_create': sane}
-        return result
 
     def button_details(self):
         self.ensure_one()

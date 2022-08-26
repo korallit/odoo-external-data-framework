@@ -170,7 +170,15 @@ class ExternalDataObject(models.Model):
                 record.link_similar_objects(model_id, search_own_source=True)
 
     @api.model
-    def sanitize_values(self, vals, model_model, prune_false=True, **kw):
+    def sanitize_values(self, vals, **kw):
+        if kw.get('operation') == 'pull' and kw.get('model_model'):
+            self._sanitize_vals_pull(vals, **kw)
+        elif kw.get('operation') == 'push' and kw.get('foreign_type_id'):
+            # TODO: sanitize push values
+            pass
+
+    @api.model
+    def _sanitize_vals_pull(self, vals, model_model, prune_false=True, **kw):
         model = self.env[model_model]
         fields_data = model.fields_get()
         fields_keys = list(fields_data.keys())
