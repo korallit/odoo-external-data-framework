@@ -8,97 +8,94 @@ class ExternalDataController(Controller):
 
     paths = [
         '/external-data/',
-        '/external-data/<string:resource>',
-        '/external-data/<string:resource>/<int:res_id>',
         '/external-data/strategy/<int:strategy_id>',
         '/external-data/strategy/<int:strategy_id>/<string:resource>',
         '/external-data/strategy/<int:strategy_id>/<string:resource>/'  # >
         '<int:res_id>',
-        '/external-data/mapping/<int:mapping_id>',
-        '/external-data/mapping/<int:mapping_id>/<string:resource>',
-        '/external-data/mapping/<int:mapping_id>/<string:resource>'  # >
+        '/external-data/strategy/<string:strategy_slug>',
+        '/external-data/strategy/<string:strategy_slug>/<string:resource>',
+        '/external-data/strategy/<string:strategy_slug>/<string:resource>/' # >
         '<int:res_id>',
     ]
 
     @route(paths, type='json', auth='api_key')
-    def strategies(self, **params):
+    def external_data(self, **params):
 
-        method = request.httprequest.method
-        # path = request.httprequest.path
-        params.update(request.httprequest.args)
         env = request.env
-        res_id = params.get('res_id')
+        # path = request.httprequest.path
+        method = request.httprequest.method
+
+        # merge params from query string, path and body
+        params.update(request.httprequest.args)
+
+        # strategy & resource params
         strategy_id = params.get('strategy_id')
-        mapping_id = params.get('mapping_id')
+        strategy_type = params.get('strategy_type')
+        strategy_slug = params.get('strategy_slug')
         resource = params.get('resource', 'info')
+        res_id = params.get('res_id')
 
         # pagination & search
         limit = params.get('page_size')
         page = params.get('page', 0)
         offset = page * limit if limit else 0
-        domain = []
-        if not params.get('show_all'):
-            domain.append(('operation', '=', 'rest'))
 
+        # find strategy
+        result = {'resource': resource}
+        domain = [('exposed', '=', True)]
+        if strategy_type:
+            domain.append(('operation', '=', strategy_type))
         strategies = env['external.data.strategy'].search(
             domain, limit=limit, offset=offset,
         )
-        strategy = strategies.browse(strategy_id).exists()
-        mapping = strategy.field_mapping_ids.filtered(
-            lambda r: r.id == mapping_id
-        )
-
-        res = {'resource': resource}
-        if strategy_id:
-            res['strategy_id'] = strategy_id
-        if mapping_id:
-            res['mapping_id'] = mapping_id
+        strategy = False
+        if type(strategy_id) == int:
+            result['strategy_id'] = strategy_id
+            domain_new = domain + [('id', '=', strategy_id)]
+            strategy = strategies.search(domain_new, limit=1)
+        if not strategy and strategy_slug:
+            result['strategy_slug'] = strategy_slug
+            domain_new = domain + [('slug', '=', strategy_slug)]
+            strategy = strategies.search(domain_new, limit=1)
         if strategy:
             fields = [
-                'id', 'name',
-                'batch_size', 'prune_vals',
-                'field_mapping_ids',
+                'id', 'name', 'slug',
                 'operation',
+                'batch_size', 'prune_vals',
             ]
-            res['strategy'] = strategy.read(fields)[0]
-        if mapping:
-            res['mapping'] = mapping.read(['id', 'name'])[0]
-            res['mapping'].update({
-                'odoo_model': mapping.model_model,
-                'foreign_type': mapping.foreign_type_id.name,
+            result['strategy'] = strategy.read(fields)[0]
+            result['strategy'].update({
+                'mappings':
+                [{
+                    'id': m.id,
+                    'name': m.name,
+                    'model': m.model_model,
+                    'foreign_type': m.foreign_type_id.name,
+                } for m in strategy.field_mapping_ids]
             })
 
         if method == 'GET':
             if not strategy:
-                fields = ['id', 'name', 'operation']
-                res['strategies'] = strategies.read(fields)
-                return res
+                fields = ['id', 'name', 'slug', 'operation']
+                result['strategies'] = strategies.read(fields)
+                return result
             elif resource == 'info':
-                return res
-            elif resource == 'mappings':
-                res.update({
-                    'mappings':
-                    [{
-                        'id': m.id,
-                        'name': m.name,
-                        'odoo_model': m.model_model,
-                        'foreign_type': m.foreign_type_id.name,
-                    } for m in strategy.field_mapping_ids]
-                })
-                return res
+                return result
             elif resource == 'items' or (resource == 'item' and res_id):
-                if not strategy.operation == 'rest':
-                    raise MissingError("Please select a valid REST strategy!")
                 metadata = {}
                 data = [
                     vals for vals in
-                    strategy._gather_items(metadata, mapping_id, res_id)
+                    strategy._gather_items(
+                        metadata, res_id,
+                        prune_implicit=params.get('prune_implicit'),
+                    )
                 ]
                 if res_id and data:
                     data = data[0]
-                res['data'] = data
+                result['data'] = data
                 if params.get('include_metadata'):
-                    res['metadata'] = metadata
-                return res
-
+                    result['metadata'] = metadata
+                return result
+            else:
+                raise UserError(f"Invalid resource: {resource}")
         raise UserError(f"Invalid method: {method}")

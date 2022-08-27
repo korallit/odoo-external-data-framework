@@ -7,6 +7,7 @@
 	    <tree>
 		<field name="priority" widget="handle"/>
 		<field name="name"/>
+		<field name="slug"/>
 		<field name="operation"/>
 		<field name="transporter_id"/>
 		<field name="serializer_id"/>
@@ -20,10 +21,12 @@
 	<field name="arch" type="xml">
 	    <form>
 		<sheet>
-		    <group col="3">
+		    <group col="4">
 			<field name="name"/>
 			<field name="data_source_id"/>
+			<field name="slug"/>
 			<field name="operation"/>
+			<field name="exposed"/>
 		    </group>
 		    <group>
 			<field name="batch_size"/>

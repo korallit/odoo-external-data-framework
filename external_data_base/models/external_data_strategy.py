@@ -5,6 +5,7 @@ from datetime import datetime
 from odoo import api, fields, models
 from odoo.fields import Command
 from odoo.osv import expression
+from odoo.addons.http_routing.models.ir_http import slugify_one
 from odoo.exceptions import MissingError, UserError
 
 import logging
@@ -17,6 +18,7 @@ class ExternalDataStrategy(models.Model):
     _order = 'priority'
 
     name = fields.Char(required=True)
+    slug = fields.Char(compute='_compute_slug', store=True)
     operation = fields.Selection(
         string="Operation",
         selection=[
@@ -24,7 +26,6 @@ class ExternalDataStrategy(models.Model):
             ('pull', "pull"),
             ('push', "push"),
             ('edit', "mass edit"),
-            ('rest', "rest"),
         ],
         required=True,
     )
@@ -63,6 +64,13 @@ class ExternalDataStrategy(models.Model):
         default=True,
     )
     batch_size = fields.Integer("Batch size", default=10)
+    exposed = fields.Boolean("Exposed to REST")
+
+    @api.depends('name')
+    @api.onchange('name')
+    def _compute_slug(self):
+        for record in self:
+            record.slug = slugify_one(record.name)
 
     def button_details(self):
         self.ensure_one()
@@ -399,9 +407,9 @@ class ExternalDataStrategy(models.Model):
 
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
 
-    def _prune_vals(self, vals, processed_keys, **kw):
+    def _prune_vals(self, vals, processed_keys, prune_implicit=True, **kw):
         self.ensure_one()
-        if self.prune_vals:
+        if prune_implicit:
             implicit_keys = set(vals.keys()) - set(processed_keys)
             for key in implicit_keys:
                 vals.pop(key)
@@ -473,9 +481,7 @@ class ExternalDataStrategy(models.Model):
 
         debug_data = []
         metadata = {'updated_ids': []}
-        for vals in self._gather_items(metadata=metadata,
-                                       field_mapping_id=field_mapping_id):
-
+        for vals in self._gather_items(metadata=metadata):
             model_model = metadata.get('model_model')
             res_id = vals.get('id')
             try:
@@ -509,24 +515,16 @@ class ExternalDataStrategy(models.Model):
 
         batch = []  # TODO: gather batch if possible, send if filled or no more
         metadata = {}
-        for vals in self._gather_items(metadata=metadata,
-                                       field_mapping_id=field_mapping_id):
-
+        for vals in self._gather_items(metadata=metadata):
             data = self.serializer_id.serialize(vals)
             result = self.transporter_id.deliver(data)
             # TODO: refresh resources, external objects from result
 
-    def _gather_items(self, metadata, field_mapping_id=False, res_id=False):
+    def _gather_items(self, metadata, res_id=False, prune_implicit=None):
         self.ensure_one()
-        if not self.field_mapping_ids:
-            raise UserError("No field mapping defined")
+        mapping = self.field_mapping_ids[0]
 
-        mapping = self.field_mapping_ids.filtered(
-            lambda r: r.id == field_mapping_id
-        )
-        if not mapping:
-            mapping = self.field_mapping_ids[0]
-
+        # get recordset
         domain_str = mapping.filter_domain
         if domain_str:
             domain = expression.normalize_domain(eval(domain_str))
@@ -540,6 +538,8 @@ class ExternalDataStrategy(models.Model):
         if not records:
             raise UserError("No records found")
 
+        if isinstance(prune_implicit, type(None)):
+            prune_implicit = self.prune_vals
         metadata.update({
             'field_mapping_id': mapping.id,
             'model_id': mapping.model_id.id,
@@ -547,10 +547,11 @@ class ExternalDataStrategy(models.Model):
             'now': datetime.now(),
             'operation': self.operation,
             'pre_post': 'pre',
-            'prune_false': self.prune_vals,
+            'prune_implicit': prune_implicit,
+            'prune_false': self.prune_vals,  # TODO: like prune_implicit
         })
-        if self.operation != 'edit':
-            foreign_type = mapping.foreign_type_id
+        foreign_type = mapping.foreign_type_id
+        if foreign_type:
             metadata.update({
                 'foreign_type_id': foreign_type.id,
                 'foreign_type_name': foreign_type.name,

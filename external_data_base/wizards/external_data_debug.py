@@ -36,7 +36,6 @@ class ExternalDataDebugWizard(models.TransientModel):
         selection=[
             ('pull', "pull"),
             ('push', "push"),
-            ('rest', "rest"),
             ('edit', "mass edit")
         ],
         default='pull',

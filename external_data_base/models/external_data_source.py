@@ -66,6 +66,7 @@ class ExternalDataSource(models.Model):
         string="Objects",
     )
     fetch_limit = fields.Integer(default=0)
+    strategy_count = fields.Integer(compute='_compute_strategy_count')
 
     @api.depends('list_strategy_ids')
     def _compute_list_strategy_id(self):
@@ -74,6 +75,12 @@ class ExternalDataSource(models.Model):
                 ds.list_strategy_id = ds.list_strategy_ids[0].id
             else:
                 ds.list_strategy_id = False
+
+    def _compute_strategy_count(self):
+        for record in self:
+            record.strategy_count = record.list_strategy_ids.search_count([
+                ('data_source_id', '=', record.id)
+            ])
 
     def list(self):
         self.ensure_one()
