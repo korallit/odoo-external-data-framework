@@ -520,7 +520,8 @@ class ExternalDataStrategy(models.Model):
             result = self.transporter_id.deliver(data)
             # TODO: refresh resources, external objects from result
 
-    def _gather_items(self, metadata, res_id=False, prune_implicit=None):
+    def _gather_items(self, metadata, res_id=False, limit=None, offset=0,
+                      prune_implicit=None):
         self.ensure_one()
         mapping = self.field_mapping_ids[0]
 
@@ -530,11 +531,12 @@ class ExternalDataStrategy(models.Model):
             domain = expression.normalize_domain(eval(domain_str))
         else:
             domain = []
-
         if res_id:
             domain.append(('id', '=', res_id))
+        if not limit:
+            limit = self.batch_size
         records = self.env[mapping.model_model].search(
-            domain, limit=self.batch_size)
+            domain, limit=limit, offset=offset)
         if not records:
             raise UserError("No records found")
 

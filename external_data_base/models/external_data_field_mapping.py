@@ -113,6 +113,7 @@ class ExternalDataFieldMapping(models.Model):
     )
     model_model = fields.Char(related='model_id.model')
     filter_domain = fields.Char("Filter")
+    record_count = fields.Integer(compute='_count_records')
     foreign_type_id = fields.Many2one(  # TODO: required if not mass edit
         'external.data.type',
         string="Foreign Type",
@@ -152,6 +153,13 @@ class ExternalDataFieldMapping(models.Model):
     )
     test_data = fields.Text("Test data", default="{}")
     test_metadata = fields.Text("Test metadata", default="{}")
+
+    @api.depends('filter_domain')
+    def _count_records(self):
+        for record in self:
+            model = record.model_model
+            domain = eval(record.filter_domain)
+            record.record_count = self.env[model].search_count(domain)
 
     def apply_mapping(self, data, metadata={}):
         self.ensure_one()

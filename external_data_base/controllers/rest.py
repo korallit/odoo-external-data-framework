@@ -6,96 +6,159 @@ from odoo.exceptions import MissingError, UserError
 
 class ExternalDataController(Controller):
 
-    paths = [
-        '/external-data/',
-        '/external-data/strategy/<int:strategy_id>',
-        '/external-data/strategy/<int:strategy_id>/<string:resource>',
-        '/external-data/strategy/<int:strategy_id>/<string:resource>/'  # >
+    json_paths = [
+        '/external-data/json',
+        '/external-data/json/<int:strategy_id>',
+        '/external-data/json/<int:strategy_id>/<string:resource>',
+        '/external-data/json/<int:strategy_id>/<string:resource>/'  # >
         '<int:res_id>',
-        '/external-data/strategy/<string:strategy_slug>',
-        '/external-data/strategy/<string:strategy_slug>/<string:resource>',
-        '/external-data/strategy/<string:strategy_slug>/<string:resource>/' # >
+        '/external-data/json/<string:strategy_slug>',
+        '/external-data/json/<string:strategy_slug>/<string:resource>',
+        '/external-data/json/<string:strategy_slug>/<string:resource>/' # >
         '<int:res_id>',
     ]
 
-    @route(paths, type='json', auth='api_key')
-    def external_data(self, **params):
-
-        env = request.env
-        # path = request.httprequest.path
-        method = request.httprequest.method
+    @route(json_paths, type='json', auth='api_key')
+    def external_data_json(self, **params):
 
         # merge params from query string, path and body
         params.update(request.httprequest.args)
+        self.params = params
 
-        # strategy & resource params
-        strategy_id = params.get('strategy_id')
-        strategy_type = params.get('strategy_type')
-        strategy_slug = params.get('strategy_slug')
+        # init result dict
         resource = params.get('resource', 'info')
-        res_id = params.get('res_id')
-
-        # pagination & search
-        limit = params.get('page_size')
-        page = params.get('page', 0)
-        offset = page * limit if limit else 0
+        self.result = {
+            'input': {'resource': resource},
+        }
 
         # find strategy
-        result = {'resource': resource}
+        self._set_strategy()
+
+        # process request
+        # path = request.httprequest.path
+        method = request.httprequest.method
+        if method == 'GET':
+            if not self.strategy or resource == 'strategies':
+                self._set_strategies()
+            elif resource == 'info':
+                self._get_info()
+            elif resource == 'resources':
+                self._get_resources()
+            elif resource == 'items' or (resource == 'item' and res_id):
+                self._get_items()
+            else:
+                raise UserError(f"Invalid resource: {resource}")
+            return self.result
+
+        raise UserError(f"Invalid method: {method}")
+
+    def _get_pagination(self):
+        page = int(self.params.get('page', 0))
+        limit = int(self.params.get('page_size', 10))
+        offset = limit * page
+        self.result['pagination'] = {
+            'page_size': limit,
+            'requested_page': offset,
+        }
+        return limit, offset
+
+    def _get_strategy_domain(self):
         domain = [('exposed', '=', True)]
-        if strategy_type:
-            domain.append(('operation', '=', strategy_type))
-        strategies = env['external.data.strategy'].search(
-            domain, limit=limit, offset=offset,
-        )
-        strategy = False
-        if type(strategy_id) == int:
-            result['strategy_id'] = strategy_id
-            domain_new = domain + [('id', '=', strategy_id)]
-            strategy = strategies.search(domain_new, limit=1)
-        if not strategy and strategy_slug:
-            result['strategy_slug'] = strategy_slug
-            domain_new = domain + [('slug', '=', strategy_slug)]
-            strategy = strategies.search(domain_new, limit=1)
+        str_type = self.params.get('strategy_type')
+        if str_type:
+            self.result['input'].update(strategy_type=str_type)
+            domain.append(('operation', '=', str_type))
+        return domain
+
+    def _set_strategies(self):
+        domain = self._get_strategy_domain()
+        fields = ['id', 'name', 'slug', 'operation']
+        self.result['strategies'] = self.strategy.search(domain).read(fields)
+
+    def _set_strategy(self):
+        str_id = self.params.get('strategy_id')
+        str_slug = self.params.get('strategy_slug')
+
+        domain = self._get_strategy_domain()
+        strategy = request.env['external.data.strategy']
+        if type(str_id) == int:
+            self.result['input'].update(strategy_id=str_id)
+            strategy = strategy.search(domain).filtered(
+                lambda str: str.id == str_id)
+        elif str_slug:
+            self.result['input'].update(strategy_slug=str_slug)
+            strategy = strategy.search(domain).filtered(
+                lambda str: str.slug == str_slug)
         if strategy:
+            strategy = strategy[0]
             fields = [
-                'id', 'name', 'slug',
-                'operation',
+                'name', 'slug', 'operation',
                 'batch_size', 'prune_vals',
             ]
-            result['strategy'] = strategy.read(fields)[0]
-            result['strategy'].update({
-                'mappings':
-                [{
+            self.result['strategy'] = {
+                'id': strategy.id,
+                'slug': strategy.slug,
+                'details': strategy.read(fields)[0],
+            }
+        self.strategy = strategy
+
+    def _get_info(self):
+        page_size, _ = self._get_pagination()
+        info = self.result['strategy']['details']
+        info['data_source'] = {
+            'id': self.strategy.data_source_id.id,
+            'name': self.strategy.data_source_id.name,
+        }
+        item_count = 0
+        mappings = self.strategy.field_mapping_ids
+        if mappings:
+            info['mappings'] = [
+                {
                     'id': m.id,
                     'name': m.name,
                     'model': m.model_model,
                     'foreign_type': m.foreign_type_id.name,
-                } for m in strategy.field_mapping_ids]
-            })
+                } for m in mappings
+            ]
+            item_count = mappings[0].record_count
+            total_pages = int(item_count / page_size) + 1 if item_count else 0
+            info['items'] = {
+                'total': item_count,
+                'total_pages': total_pages,
+            }
+            res_count = len(self.strategy.data_source_id.resource_ids)
+            total_pages = int(res_count / page_size) + 1 if item_count else 0
+            info['resources'] = {
+                'total': res_count,
+                'total_pages': total_pages,
+            }
+        
+    def _get_items(self):
+        res_id = self.params.get('res_id')
+        limit, offset = self._get_pagination()
+        metadata = {}
+        self.result['strategy']['items'] = [
+            vals for vals in
+            self.strategy._gather_items(
+                metadata, res_id=res_id, limit=limit, offset=offset,
+                prune_implicit=self.params.get('prune_implicit'),
+            )
+        ]
+        if self.params.get('include_metadata'):
+            self.result['metadata'] = metadata
 
-        if method == 'GET':
-            if not strategy:
-                fields = ['id', 'name', 'slug', 'operation']
-                result['strategies'] = strategies.read(fields)
-                return result
-            elif resource == 'info':
-                return result
-            elif resource == 'items' or (resource == 'item' and res_id):
-                metadata = {}
-                data = [
-                    vals for vals in
-                    strategy._gather_items(
-                        metadata, res_id,
-                        prune_implicit=params.get('prune_implicit'),
-                    )
-                ]
-                if res_id and data:
-                    data = data[0]
-                result['data'] = data
-                if params.get('include_metadata'):
-                    result['metadata'] = metadata
-                return result
-            else:
-                raise UserError(f"Invalid resource: {resource}")
-        raise UserError(f"Invalid method: {method}")
+    def _get_resources(self):
+        domain = [
+            ('data_source_id', '=', self.strategy.data_source_id.id),
+        ]
+        limit, offset = self._get_pagination()
+        resources = request.env['external.data.resource'].search(
+            domain, limit=limit, offset=offset)
+        self.result['strategy']['resources'] = [
+            {
+                'id': res.id,
+                'name': res.name,
+                'url': res.url,
+                'external_objects': len(res.object_ids),
+            } for res in resources
+        ]
