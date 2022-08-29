@@ -29,7 +29,16 @@
 		    <group>
 			<field name="name"/>
 			<field name="engine"/>
+			<field name="pretty_print"
+			       attrs="{'invisible': [('engine', 'not in', ['json', 'lxml_etree'])]}"/>
+			<field name="lxml_root"
+			       attrs="{'invisible': [('engine', 'not in', ['lxml_etree'])]}"/>
+			<field name="qweb_template"
+			       attrs="{'invisible': [('engine', 'not in', ['qweb'])]}"/>
 		    </group>
+		    <separator string="JMESPath expression"/>
+		    <field name="jmespath_expr" nolabel="1" colspan="4"
+			   style="font-family: monospace;" class="bg-dark text-light px-2"/>
 		    <notebook>
 			<page string="Parser directives">
 			    <field name="parser_line_ids">

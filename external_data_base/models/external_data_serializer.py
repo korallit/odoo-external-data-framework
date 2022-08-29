@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import json
+import jmespath
 from io import BufferedReader
 
 from odoo import api, fields, models
@@ -10,6 +12,7 @@ from bs4 import element as bs_element
 from urllib.parse import parse_qsl
 
 from ..tools import bs
+from ..tools.jmespath import options as jmespath_options
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -22,13 +25,23 @@ class ExternalDataSerializer(models.Model):
     name = fields.Char(required=True)
     engine = fields.Selection(
         selection=[
-            ('bs', "BeautifulSoup"),
             ('json', "JSON"),
+            ('bs', "BeautifulSoup"),
             ('lxml_etree', "lxml.etree"),
-            ('orm', "Odoo ORM"),
+            ('csv', "CSV"),
+            ('qweb', "Qweb"),
             ('custom', "custom"),
         ],
         required=True,
+        default='json',
+    )
+    pretty_print = fields.Boolean("Pretty print", default=True)
+    jmespath_expr = fields.Text("JMESPath expression")
+    lxml_root = fields.Char("lxml root element")
+    qweb_template = fields.Many2one(
+        'ir.ui.view',
+        string="Qweb template",
+        domain="[('type', '=', 'qweb')]"
     )
     custom_name = fields.Char("Custom method name")
     parser_line_ids = fields.One2many(
@@ -88,6 +101,103 @@ class ExternalDataSerializer(models.Model):
         self.ensure_one()
         return self.parser_line_ids.objects(data)
 
+    def render(self, data, metadata={}):
+        self.ensure_one()
+        items = data.get('strategy', {}).get('items')
+        if items:
+            items = self.rearrange_data(items, metadata)
+            data['strategy']['items'] = items
+        # TODO: parse items with jmespath
+        if self.engine == 'json':
+            return self._render_json(data)
+        elif self.engine == 'lxml_etree':
+            return self._render_lxml_etree(items)
+        elif self.engine == 'qweb':
+            return self._render_qweb()
+        return False
+
+    def rearrange_data(self, items, metadata={}):
+        self.ensure_one()
+        jmespath_expr = self.get_jmespath()
+        if not jmespath_expr:  # TODO: and not custom rules
+            return items
+        items_new = []
+        for vals in items:
+            # TODO: apply per value custom rules
+            # key = expr({'key': key, 'value': value})
+            try:
+                vals_new = jmespath_expr({'vals': vals, 'metadata': metadata})
+            except jmespath.exceptions.JMESPathTypeError as e:
+                _logger.error(e)
+                continue
+            items_new.append(vals_new)
+        return items_new
+
+    def _render_json(self, data, indent=None):
+        indent = None
+        if self.pretty_print:
+            indent = 4
+        return self.render_json(data, indent=indent)
+
+    @api.model
+    def render_json(self, data, indent=None):
+        return json.dumps(data, indent=indent)
+
+    def _render_lxml_etree(self, items):
+        self.ensure_one()
+        if not isinstance(items, list):
+            return False
+
+        name = self.lxml_root if self.lxml_root else "root"
+        # TODO: attrs
+        root = etree.Element(name)
+        for item in items:
+            root.append(self._lxml_etree_create_element(item))
+        return self._serialize_xml(root)
+
+    def _serialize_xml(self, root):
+        self.ensure_one()
+        return etree.tostring(
+            root, encoding='utf-8', xml_declaration=True,
+            pretty_print=self.pretty_print
+        )
+
+    @api.model
+    def _lxml_etree_create_element(self, data):
+        if not isinstance(data, dict):
+            _logger.error(
+                f"Serializer lxml etree wants a dict, got this: {str(data)}")
+            return None
+        name, attrs = data.get('name', 'noname'), data.get('attrs', {})
+        element = etree.Element(name, **attrs)
+        if data.get('text'):
+            element.text = data['text']
+        if data.get('children'):
+            for child in data['children']:
+                child_elem = self._lxml_etree_create_element(child)
+                if child_elem is not None:
+                    element.append(child_elem)
+        return element
+
+    def _render_qweb(self, data):
+        if self.qweb_template:
+            qweb = self.env['ir.qweb']
+            try:
+                return qweb._render(self.qweb_template, data)
+            except Exception as e:
+                _logger.error(e)
+                return False
+
+    def get_jmespath(self):
+        if not self.jmespath_expr:
+            return False
+        try:
+            expr = jmespath.compile(self.jmespath_expr)
+        except jmespath.exceptions.ParseError as e:
+            _logger.error(e)
+            return False
+        return lambda d: expr.search(d, options=jmespath_options)
+
 
 class ExternalDataParserLine(models.Model):
     _name = 'external.data.parser.line'
@@ -137,7 +247,6 @@ class ExternalDataParserLine(models.Model):
             ('children', "children"),
             ('prev', "previous"),
             ('next', "next"),
-            ('jmespath', "JMESPath"),
             ('custom', "custom"),
         ],
         required=True,

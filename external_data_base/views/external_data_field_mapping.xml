@@ -22,6 +22,7 @@
 			<field name="foreign_type_id"/>
 			<field name="filter_domain" widget="domain"
 			       options="{'model': 'model_model', 'in_dialog': True}"/>
+			<field name="prune_vals"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">

@@ -45,7 +45,7 @@ class ExternalDataStrategy(models.Model):
     )
     serializer_id = fields.Many2one(
         'external.data.serializer',
-        string="Parser",
+        string="Parser/Serializer",
     )
     deferred_create = fields.Boolean(
         "Deferred create",
@@ -56,12 +56,6 @@ class ExternalDataStrategy(models.Model):
         'external.data.field.mapping',
         string="Field mappings",
         domain="[('data_source_id', '=', data_source_id)]",
-    )
-    prune_vals = fields.Boolean(
-        "Prune values",
-        help="Delete values from data before write that are "
-        "not included in the mapping or the ruleset",
-        default=True,
     )
     batch_size = fields.Integer("Batch size", default=10)
     exposed = fields.Boolean("Exposed to REST")
@@ -178,6 +172,7 @@ class ExternalDataStrategy(models.Model):
         foreign_types = field_mappings_all.mapped('foreign_type_id')
         data_source_objects = data_source.object_ids
         object_data_generators = parser.parse(raw_data)
+        jmespath_expr = parser.get_jmespath(),
         foreign_objects = []
         debug_data, debug_metadata = {}, {}
         deferred_create_data = {}
@@ -225,6 +220,8 @@ class ExternalDataStrategy(models.Model):
                     'foreign_id': foreign_id,
                     'processed_keys': [],
                 })
+                if jmespath_expr:
+                    data = jmespath_expr({'vals': data, 'metadata': metadata})
                 if debug:
                     foreign_type_name = metadata['foreign_type_name']
                     debug_data[foreign_type_name].append(data.copy())
@@ -407,8 +404,8 @@ class ExternalDataStrategy(models.Model):
 
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
 
+    @api.model
     def _prune_vals(self, vals, processed_keys, prune_implicit=True, **kw):
-        self.ensure_one()
         if prune_implicit:
             implicit_keys = set(vals.keys()) - set(processed_keys)
             for key in implicit_keys:
@@ -421,7 +418,7 @@ class ExternalDataStrategy(models.Model):
         """
         self.ensure_one()
         for key in ['field_mapping_id', 'resource_id']:
-            assert(isinstance(metadata.get(key), int))
+            assert isinstance(metadata.get(key), int)
 
         # creating records
         _logger.info(f"Creating {len(vals)} records in model {model_model}")
@@ -541,7 +538,7 @@ class ExternalDataStrategy(models.Model):
             raise UserError("No records found")
 
         if isinstance(prune_implicit, type(None)):
-            prune_implicit = self.prune_vals
+            prune_implicit = mapping.prune_vals
         metadata.update({
             'field_mapping_id': mapping.id,
             'model_id': mapping.model_id.id,
@@ -550,7 +547,7 @@ class ExternalDataStrategy(models.Model):
             'operation': self.operation,
             'pre_post': 'pre',
             'prune_implicit': prune_implicit,
-            'prune_false': self.prune_vals,  # TODO: like prune_implicit
+            'prune_false': mapping.prune_vals,  # TODO: like prune_implicit
         })
         foreign_type = mapping.foreign_type_id
         if foreign_type:

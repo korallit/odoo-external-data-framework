@@ -4,6 +4,7 @@ import logging
 
 from odoo import api, fields, models
 from odoo.fields import Command
+from odoo.addons.http_routing.models.ir_http import slugify_one
 from odoo.exceptions import MissingError
 
 _logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ class ExternalDataSource(models.Model):
     _description = "External Data Source"
 
     name = fields.Char(required=True)
+    slug = fields.Char(compute='_compute_slug', store=True)
     list_strategy_id = fields.Many2one(
         'external.data.strategy',
         string="List strategy",
@@ -67,6 +69,12 @@ class ExternalDataSource(models.Model):
     )
     fetch_limit = fields.Integer(default=0)
     strategy_count = fields.Integer(compute='_compute_strategy_count')
+
+    @api.depends('name')
+    @api.onchange('name')
+    def _compute_slug(self):
+        for record in self:
+            record.slug = slugify_one(record.name)
 
     @api.depends('list_strategy_ids')
     def _compute_list_strategy_id(self):

@@ -114,6 +114,12 @@ class ExternalDataFieldMapping(models.Model):
     model_model = fields.Char(related='model_id.model')
     filter_domain = fields.Char("Filter")
     record_count = fields.Integer(compute='_count_records')
+    prune_vals = fields.Boolean(
+        "Prune values",
+        help="Delete values from data before write that are "
+        "not included in the mapping or the ruleset",
+        default=True,
+    )
     foreign_type_id = fields.Many2one(  # TODO: required if not mass edit
         'external.data.type',
         string="Foreign Type",
@@ -161,6 +167,15 @@ class ExternalDataFieldMapping(models.Model):
             domain = eval(record.filter_domain)
             record.record_count = self.env[model].search_count(domain)
 
+    def button_details(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'external.data.field.mapping',
+            'views': [(False, 'form')],
+            'res_id': self.id,
+        }
+
     def apply_mapping(self, data, metadata={}):
         self.ensure_one()
         field_mapping_lines = self.field_mapping_line_ids
@@ -200,14 +215,4 @@ class ExternalDataFieldMapping(models.Model):
                 vals[target_key] = vals.get(source_key)
 
             metadata['processed_keys'].append(target_key)
-
         return vals
-
-    def button_details(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'external.data.field.mapping',
-            'views': [(False, 'form')],
-            'res_id': self.id,
-        }
