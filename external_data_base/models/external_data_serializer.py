@@ -36,7 +36,6 @@ class ExternalDataSerializer(models.Model):
         default='json',
     )
     pretty_print = fields.Boolean("Pretty print", default=True)
-    jmespath_expr = fields.Text("JMESPath expression")
     lxml_root = fields.Char("lxml root element")
     qweb_template = fields.Many2one(
         'ir.ui.view',
@@ -44,6 +43,11 @@ class ExternalDataSerializer(models.Model):
         domain="[('type', '=', 'qweb')]"
     )
     custom_name = fields.Char("Custom method name")
+    jmespath_line_ids = fields.One2many(
+        'external.data.jmespath.line',
+        inverse_name='serializer_id',
+        string="JMESPath Expressions",
+    )
     parser_line_ids = fields.One2many(
         'external.data.parser.line',
         inverse_name='serializer_id',
@@ -101,37 +105,18 @@ class ExternalDataSerializer(models.Model):
         self.ensure_one()
         return self.parser_line_ids.objects(data)
 
-    def render(self, data, metadata={}):
+    def render(self, data, metadata={}, key=False):
         self.ensure_one()
-        items = data.get('strategy', {}).get('items')
-        if items:
-            items = self.rearrange_data(items, metadata)
-            data['strategy']['items'] = items
-        # TODO: parse items with jmespath
+        if key:
+            chunk = data.get(key)
+
         if self.engine == 'json':
             return self._render_json(data)
         elif self.engine == 'lxml_etree':
-            return self._render_lxml_etree(items)
+            return self._render_lxml_etree(chunk)
         elif self.engine == 'qweb':
-            return self._render_qweb()
+            return self._render_qweb(data, metadata)
         return False
-
-    def rearrange_data(self, items, metadata={}):
-        self.ensure_one()
-        jmespath_expr = self.get_jmespath()
-        if not jmespath_expr:  # TODO: and not custom rules
-            return items
-        items_new = []
-        for vals in items:
-            # TODO: apply per value custom rules
-            # key = expr({'key': key, 'value': value})
-            try:
-                vals_new = jmespath_expr({'vals': vals, 'metadata': metadata})
-            except jmespath.exceptions.JMESPathTypeError as e:
-                _logger.error(e)
-                continue
-            items_new.append(vals_new)
-        return items_new
 
     def _render_json(self, data, indent=None):
         indent = None
@@ -168,7 +153,7 @@ class ExternalDataSerializer(models.Model):
             _logger.error(
                 f"Serializer lxml etree wants a dict, got this: {str(data)}")
             return None
-        name, attrs = data.get('name', 'noname'), data.get('attrs', {})
+        name, attrs = data.get('name', 'notfound'), data.get('attrs', {})
         element = etree.Element(name, **attrs)
         if data.get('text'):
             element.text = data['text']
@@ -186,17 +171,65 @@ class ExternalDataSerializer(models.Model):
                 return qweb._render(self.qweb_template, data)
             except Exception as e:
                 _logger.error(e)
-                return False
+                return str(e)
+        msg = "No Qweb template specified"
+        _logger.error(msg)
+        return msg
 
-    def get_jmespath(self):
-        if not self.jmespath_expr:
+    def rearrange(self, items, metadata={}):
+        # TODO: iterate over rules
+        self.ensure_one()
+        if not isinstance(items, list):
+            _logger.warning(f"Items has to be a list, got this: {items}")
             return False
-        try:
-            expr = jmespath.compile(self.jmespath_expr)
-        except jmespath.exceptions.ParseError as e:
-            _logger.error(e)
-            return False
-        return lambda d: expr.search(d, options=jmespath_options)
+        expressions = self.jmespath_line_ids
+        if not expressions:
+            return items
+        expr_generators = expressions.get_jmespath_generators()
+        items_new = []
+        for vals in items:
+            for expr in expr_generators:
+                vals_new = expr({'vals': vals, 'metadata': metadata})
+                if not vals_new:
+                    continue
+                items_new.append(vals_new)
+        return items_new
+
+
+class ExternalDataJMESPathLine(models.Model):
+    _name = 'external.data.jmespath.line'
+    _description = "External Data JMESPath Expression"
+    _order = 'sequence'
+
+    name = fields.Char(default="JEMSPath expression")
+    sequence = fields.Integer(default=10)
+    serializer_id = fields.Many2one(
+        'external.data.serializer',
+        string="Serializer",
+        required=True,
+        ondelete='cascade',
+    )
+    jmespath_expr = fields.Text("JMESPath expression")
+    update = fields.Boolean()
+
+    def get_jmespath_generators(self):
+        generators = []
+        for record in self:
+            try:
+                expr = jmespath.compile(record.jmespath_expr)
+            except jmespath.exceptions.ParseError as e:
+                _logger.error(e)
+                continue
+
+            def expression_closure(data):
+                try:
+                    # TODO: optionally update vals instead of return new
+                    return expr.search(data, options=jmespath_options)
+                except jmespath.exceptions.JMESPathTypeError as e:
+                    _logger.error(e)
+                    return data
+            generators.append(expression_closure)
+        return generators
 
 
 class ExternalDataParserLine(models.Model):
@@ -286,7 +319,7 @@ class ExternalDataParserLine(models.Model):
         data_prep = self.prepare(raw_data, self[0].engine)
         foreign_type_ids = self.mapped('foreign_type_id').ids
         for foreign_type_id in foreign_type_ids:
-            # getting toplpevel rules for foreign type
+            # getting toplevel rules for foreign type
             rules = self.filtered(
                 lambda r:
                 r.active and
@@ -296,13 +329,16 @@ class ExternalDataParserLine(models.Model):
             if not rules:
                 continue  # TODO: log, exception
 
+            # gettimg jmespath expression generator from serializer
+            jmespath_expr = self.serializer_id.get_jmespath_generators()
+
             # setting up generator
             objects[foreign_type_id] = self.object_data_generator(
-                rules, data_prep, vals={})
+                rules, data_prep, vals={}, jmespath_expr=jmespath_expr)
         return objects
 
     @api.model
-    def object_data_generator(self, rules, data, vals={}):
+    def object_data_generator(self, rules, data, vals={}, jmespath_expr=[]):
         foreign_type_id = rules.foreign_type_id.id
         vals, generator, gen_rule_id = rules.get_object_data(
             foreign_type_id, data, vals=vals,
@@ -314,11 +350,22 @@ class ExternalDataParserLine(models.Model):
             ])
             for child_data in generator:
                 gen = self.object_data_generator(
-                    child_rules, child_data, vals=vals)
+                    child_rules, child_data, vals=vals,
+                    jmespath_expr=jmespath_expr,
+                )
                 for child_vals in gen:
                     yield child_vals
         else:
-            yield vals
+            # rearrange by starting with an empty new dict
+            vals_parsed = {}
+            for expr in jmespath_expr:
+                parsed = expr(vals)
+                if parsed:
+                    vals_parsed.update(parsed)
+            if vals_parsed:
+                yield vals_parsed
+            else:
+                yield vals
 
     def get_object_data(self, foreign_type_id, data,
                         vals={}, generator=None, gen_rule_id=False):

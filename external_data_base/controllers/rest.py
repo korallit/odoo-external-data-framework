@@ -3,6 +3,9 @@
 from odoo.http import Controller, request, route
 from odoo.exceptions import UserError
 
+import logging
+_logger = logging.getLogger(__name__)
+
 
 class ExternalDataController(Controller):
 
@@ -83,7 +86,8 @@ class ExternalDataController(Controller):
         # merge params from query string, path and body
         params.update(request.httprequest.args)
         self.params = params
-        self._process_request()
+        metadata = {}
+        self._process_request(metadata)
         return self.result
 
     @route(http_paths, type='http', auth='api_key', csrf=False)
@@ -92,8 +96,8 @@ class ExternalDataController(Controller):
         self.params = params
         metadata = {}
         self._process_request(metadata)
-        data = self._serialize_result(metadata)
-        return request.make_response(data)
+        result_str = self._serialize_result(metadata)
+        return request.make_response(result_str)
 
     @route(web_paths, type='http', auth='user')
     def external_data_web(self, **params):
@@ -108,13 +112,15 @@ class ExternalDataController(Controller):
         renderer = self.strategy.serializer_id
         data = False
         if renderer:
-            data = renderer.render(self.result, metadata)
+            data = renderer.render(self.result, metadata, key="items")
         else:  # fallback to json
             data = renderer.render_json(self.result)
 
         if data:
             return data
-        return "No data produced"
+        msg = "No data produced"
+        _logger.error(msg)
+        return msg
 
     def _process_request(self, metadata={}):
         # get resource label from params
@@ -227,17 +233,13 @@ class ExternalDataController(Controller):
             fields = [
                 'name', 'slug', 'operation', 'batch_size',
             ]
-            self.result['strategy'] = {
-                'id': strategy.id,
-                'slug': strategy.slug,
-                'details': strategy.read(fields)[0],
-            }
+            self.result['strategy'] = strategy.read(fields)[0]
         self.strategy = strategy
 
     def _get_info(self):
         page_size, _ = self._get_pagination()
-        info = self.result['strategy']['details']
-        info['data_source'] = {
+        node = self.result['strategy']
+        node['Data_source'] = {
             'id': self.strategy.data_source_id.id,
             'name': self.strategy.data_source_id.name,
             'slug': self.strategy.data_source_id.slug,
@@ -245,7 +247,7 @@ class ExternalDataController(Controller):
         item_count = 0
         mappings = self.strategy.field_mapping_ids
         if mappings:
-            info['mappings'] = [
+            node['mappings'] = [
                 {
                     'id': m.id,
                     'name': m.name,
@@ -256,13 +258,13 @@ class ExternalDataController(Controller):
             ]
             item_count = mappings[0].record_count
             total_pages = int(item_count / page_size) + 1 if item_count else 0
-            info['items'] = {
+            node['items'] = {
                 'total': item_count,
                 'total_pages': total_pages,
             }
             res_count = len(self.strategy.data_source_id.resource_ids)
             total_pages = int(res_count / page_size) + 1 if item_count else 0
-            info['resources'] = {
+            node['resources'] = {
                 'total': res_count,
                 'total_pages': total_pages,
             }
@@ -270,13 +272,19 @@ class ExternalDataController(Controller):
     def _get_items(self, metadata={}):
         res_id = self.params.get('res_id')
         limit, offset = self._get_pagination()
-        self.result['strategy']['items'] = [
+        items = [
             vals for vals in
             self.strategy._gather_items(
                 metadata, res_id=res_id, limit=limit, offset=offset,
                 prune_implicit=self.params.get('prune_implicit'),
             )
         ]
+        renderer = self.strategy.serializer_id
+        if renderer:
+            items_new = renderer.rearrange(items, metadata)
+            if items_new:
+                items = items_new
+        self.result['items'] = items
         if self.params.get('include_metadata'):
             self.result['metadata'] = metadata
 
@@ -287,7 +295,7 @@ class ExternalDataController(Controller):
         limit, offset = self._get_pagination()
         resources = request.env['external.data.resource'].search(
             domain, limit=limit, offset=offset)
-        self.result['strategy']['resources'] = [
+        self.result['resources'] = [
             {
                 'id': res.id,
                 'name': res.name,

@@ -172,7 +172,6 @@ class ExternalDataStrategy(models.Model):
         foreign_types = field_mappings_all.mapped('foreign_type_id')
         data_source_objects = data_source.object_ids
         object_data_generators = parser.parse(raw_data)
-        jmespath_expr = parser.get_jmespath(),
         foreign_objects = []
         debug_data, debug_metadata = {}, {}
         deferred_create_data = {}
@@ -220,8 +219,6 @@ class ExternalDataStrategy(models.Model):
                     'foreign_id': foreign_id,
                     'processed_keys': [],
                 })
-                if jmespath_expr:
-                    data = jmespath_expr({'vals': data, 'metadata': metadata})
                 if debug:
                     foreign_type_name = metadata['foreign_type_name']
                     debug_data[foreign_type_name].append(data.copy())
