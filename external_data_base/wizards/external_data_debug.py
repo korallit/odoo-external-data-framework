@@ -94,25 +94,13 @@ class ExternalDataDebugWizard(models.TransientModel):
         if not (self.sub_operation or self.operation):
             self.output = "Choose an operation method to start!"
         elif self.sub_operation == 'map' and self.field_mapping_id:
-            pre = post = False
-            if self.pre_post == 'pre':
-                pre, post = True, False
-            elif self.pre_post == 'pre':
-                pre, post = False, True
-            elif self.pre_post == 'all':
-                pre = post = True
-            result = self.test_mapping(
-                pre=pre, post=post,
-                prune=self.prune,
-                sanitize=self.sanitize,
-            )
+            result = self.test_mapping()
         elif self.sub_operation == 'parse' and self.resource_id:
-            result, _ = self.resource_id.test_parser(
-                strategy_id=self.strategy_id.id)
+            result, _ = self.test_parser()
         elif self.operation == 'pull' and self.resource_id:
-            result = self.resource_id.test_pull(
-                strategy_id=self.strategy_id.id)
+            result = self.test_pull()
 
+        # the above code runs mass edit, debug mode is optionsl
         elif all([self.operation == 'edit',
                   self.strategy_id,
                   self.field_mapping_id,
@@ -130,10 +118,18 @@ class ExternalDataDebugWizard(models.TransientModel):
                 result, ensure_ascii=False, indent=4, default=str,
             )
 
-    def test_mapping(self, data=False, metadata=False,
-                     pre=True, post=False, prune=True, sanitize=True,
-                     field_mapping_id=False):
+    def test_mapping(self, data=False, metadata=False, field_mapping_id=False):
         self.ensure_one()
+        pre = post = False
+        if self.pre_post == 'pre':
+            pre, post = True, False
+        elif self.pre_post == 'pre':
+            pre, post = False, True
+        elif self.pre_post == 'all':
+            pre = post = True
+        prune = self.prune
+        sanitize = self.sanitize
+
         mapping = self.field_mapping_id
         if field_mapping_id:
             mapping = mapping.browse(field_mapping_id).exists()

@@ -342,7 +342,7 @@ class ExternalDataStrategy(models.Model):
                 return False
 
         # write record
-        ext_object.write_odoo_record(vals, **metadata)
+        ext_object.write_odoo_record(vals, metadata)
         metadata['record'] = ext_object._record(metadata['model_id'])
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
         metadata['postprocess_rules'] += ext_object.rule_ids_post

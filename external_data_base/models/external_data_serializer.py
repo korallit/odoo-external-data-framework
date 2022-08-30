@@ -331,7 +331,8 @@ class ExternalDataParserLine(models.Model):
                 continue  # TODO: log, exception
 
             # gettimg jmespath expression generator from serializer
-            jmespath_expr = self.serializer_id.get_jmespath_generators()
+            expressions = self.serializer_id.jmespath_line_ids
+            jmespath_expr = expressions.get_jmespath_generators()
 
             # setting up generator
             objects[foreign_type_id] = self.object_data_generator(

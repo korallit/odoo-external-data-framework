@@ -97,17 +97,18 @@ class ExternalDataObject(models.Model):
     def _record(self, model_id):
         return self.get_object_link(model_id)._record()
 
-    def write_odoo_record(self, vals,
-                          model_id=False, model_model=False, **kw):
+    def write_odoo_record(self, vals, metadata):
         self.ensure_one()
+        model_id = metadata.get('model_id')
+        model_model = metadata.get('model_model')
         # getting model
         object_link = self.get_object_link(model_id)
         if object_link:
-            self.sanitize_values(vals, model_model, prune_false=False)
+            self.sanitize_values(vals, prune_false=False, **metadata)
             record = object_link._record()
             record.write(vals)
         elif model_id and model_model:
-            if self.sanitize_values(vals, model_model):
+            if self.sanitize_values(vals, **metadata):
                 record = self.env[model_model].create(vals)
                 self.object_link_ids = [Command.create({
                     'model_id': model_id,
@@ -172,7 +173,7 @@ class ExternalDataObject(models.Model):
     @api.model
     def sanitize_values(self, vals, **kw):
         if kw.get('operation') in ['pull', 'edit'] and kw.get('model_model'):
-            self._sanitize_vals_pull(vals, **kw)
+            return self._sanitize_vals_pull(vals, **kw)
         elif kw.get('operation') == 'push' and kw.get('foreign_type_id'):
             # TODO: sanitize push values
             pass

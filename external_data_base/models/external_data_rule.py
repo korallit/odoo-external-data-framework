@@ -255,14 +255,23 @@ class ExternalDataRule(models.Model):
                 else:
                     metadata['processed_keys'] = [rule.key]
 
-    def _regexp_replace(self, value, vals):
+    def _regexp_replace(self, value, vals, multiline=True):
+        # TODO: add parameter sub_multiline
         self.ensure_one()
         if not value:
             value = ''
-        pattern = re.compile(self.sub_pattern) if self.sub_pattern else '^.*$'
+
+        pattern = self.sub_pattern
+        if multiline:
+            flags = re.DOTALL
+            if not pattern:
+                pattern = '^.*$'
+        else:
+            flags = 0
+            pattern = re.compile(pattern) if pattern else '^.*$'
         repl = self.sub_repl.format(**vals) if self.sub_repl else ''
         count = self.sub_count
-        return re.sub(pattern, repl, value, count=count, flags=re.DOTALL)
+        return re.sub(pattern, repl, value, count=count, flags=flags)
 
     def _parse_time(self, value):
         self.ensure_one()
