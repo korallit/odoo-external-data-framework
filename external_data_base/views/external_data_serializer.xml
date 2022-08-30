@@ -59,6 +59,7 @@
 				    <field name="sequence" widget="handle"/>
 				    <field name="name"/>
 				    <field name="update"/>
+				    <field name="bypass"/>
 				</tree>
 			    </field>
 			</page>
@@ -77,6 +78,7 @@
 		    <group col="4">
 			<field name="name"/>
 			<field name="update"/>
+			<field name="bypass"/>
 			<field name="jmespath_expr" nolabel="1" colspan="4"
 			       style="font-family: monospace;" class="bg-dark text-light px-2"/>
 		    </group>

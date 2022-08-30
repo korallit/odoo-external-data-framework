@@ -133,9 +133,9 @@ class ExternalDataSerializer(models.Model):
         if not isinstance(items, list):
             return False
 
-        name = self.lxml_root if self.lxml_root else "root"
+        tag = self.lxml_root if self.lxml_root else "root"
         # TODO: attrs
-        root = etree.Element(name)
+        root = etree.Element(tag)
         for item in items:
             root.append(self._lxml_etree_create_element(item))
         return self._serialize_xml(root)
@@ -153,8 +153,8 @@ class ExternalDataSerializer(models.Model):
             _logger.error(
                 f"Serializer lxml etree wants a dict, got this: {str(data)}")
             return None
-        name, attrs = data.get('name', 'notfound'), data.get('attrs', {})
-        element = etree.Element(name, **attrs)
+        tag, attrs = data.get('tag', 'notfound'), data.get('attrs', {})
+        element = etree.Element(tag, **attrs)
         if data.get('text'):
             element.text = data['text']
         if data.get('children'):
@@ -211,10 +211,11 @@ class ExternalDataJMESPathLine(models.Model):
     )
     jmespath_expr = fields.Text("JMESPath expression")
     update = fields.Boolean()
+    bypass = fields.Boolean()
 
     def get_jmespath_generators(self):
         generators = []
-        for record in self:
+        for record in self.filtered(lambda r: not r.bypass):
             try:
                 expr = jmespath.compile(record.jmespath_expr)
             except jmespath.exceptions.ParseError as e:
