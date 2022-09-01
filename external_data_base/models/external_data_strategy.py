@@ -142,8 +142,7 @@ class ExternalDataStrategy(models.Model):
             if i == self.batch_size and not do_all:
                 break
 
-    def pull_resource(self, resource_id, sync=False, prune=False,
-                      debug=False):
+    def pull_resource(self, resource_id, sync=False, prune=False, debug=False):
         self.ensure_one()
         if self.operation not in ['list', 'pull']:
             raise UserError(f"Wrong operation type for pull: {self.operation}")
@@ -164,9 +163,13 @@ class ExternalDataStrategy(models.Model):
             'deferred_create': self.deferred_create,
             'data_source_id': data_source.id,
             'resource_id': resource_id,
+            'resource_name': resource_name,
             'strategy_id': self.id,
             'strategy_name': self.name,
             'parser_id': parser.id,
+            'sync': sync,
+            'prune': prune,
+            'debug': debug,
         }
         field_mappings_all = self.field_mapping_ids
         foreign_types = field_mappings_all.mapped('foreign_type_id')
@@ -199,95 +202,38 @@ class ExternalDataStrategy(models.Model):
                 'now': datetime.now(),
                 'record': False,
             })
-            object_vals = {
-                'data_source_id': data_source.id,
-                'foreign_type_id': foreign_type.id,
-                'resource_ids': [Command.link(resource_id)],
-            }
             if debug:
                 debug_data[foreign_type.name] = []
                 debug_metadata[foreign_type.name] = []
 
             # map & process
             for index, data in enumerate(data_generator):
-                foreign_id = data.get(metadata['foreign_id_key'])
-                if not foreign_id:
-                    msg = f"Missing foreign ID from resource {resource_name}"
-                    _logger.error(msg)
-                    continue
-                metadata.update({
-                    'index': index,
-                    'foreign_id': foreign_id,
-                    'processed_keys': [],
-                })
+                metadata['index'] = index
                 if debug:
-                    foreign_type_name = metadata['foreign_type_name']
-                    debug_data[foreign_type_name].append(data.copy())
-                    debug_metadata[foreign_type_name].append(metadata.copy())
-                if prune:
-                    foreign_objects.append(
-                        (metadata['foreign_type_id'], foreign_id))
-                if not sync:
+                    type_name = metadata['foreign_type_name']
+                    debug_data[type_name].append(data.copy())
+                    debug_metadata[type_name].append(metadata.copy())
                     continue
-                object_vals.update({
-                    'foreign_id': foreign_id,
-                    'priority': index,
-                })
-
                 for field_mapping in field_mappings:
-                    metadata.update({
-                        'field_mapping_id': field_mapping.id,
-                        'model_id': field_mapping.model_id.id,
-                        'model_model': field_mapping.model_id.model,
-                    })
-                    if metadata['operation'] == 'pull':
-                        vals = self._pull(
-                            resource, field_mapping, object_vals,
-                            data, metadata,
-                        )
-                    elif metadata['operation'] == 'list':
-                        vals = self._list(
-                            resource, field_mapping, object_vals,
-                            data, metadata,
-                        )
-                    else:
+                    foreign_id = data.get(metadata['foreign_id_key'])
+                    if not foreign_id:
+                        msg = "Missing foreign ID from resource {}".format(
+                            metadata.get('resource_name'))
+                        _logger.error(msg)
                         continue
-                    if not vals:
-                        continue
-
-                    # deferred create
-                    record = metadata.get('record')
-                    if metadata['deferred_create'] and not record:
-                        model_model = metadata['model_model']
-                        dc_data = deferred_create_data.get(model_model)
-                        if not dc_data:
-                            dc_data = deferred_create_data[model_model] = {
-                                'vals': [],
-                                'data': [],
-                                'object_vals': [],
-                            }
-                            dc_data.update(metadata)
-
-                        dc_data['vals'].append(vals)
-                        dc_data['data'].append(data.copy())
-                        dc_data['object_vals'].append(object_vals.copy())
-
-                    # post processing
-                    postprocess_rules = metadata.get('postprocess_rules')
-                    if record and postprocess_rules:
-                        metadata.update(pre_post='post')
-                        vals = field_mapping.apply_mapping(data, metadata)
-                        postprocess_rules.apply_rules(vals, metadata)
-                        if metadata.get('drop'):
-                            if record and metadata.get('delete'):
-                                record.unlink()
-                            return True
-                        self._prune_vals(vals, **metadata)
-                        external_objects.sanitize_values(vals, **metadata)
-                        metadata['record'].write(vals)
-
-                resource.last_pull = datetime.now()
-
+                    metadata['variant_tag'] = \
+                        field_mapping.object_link_variant_tag
+                    metadata['foreign_id'] = foreign_id
+                    if prune:
+                        foreign_objects.append(
+                            (metadata['foreign_type_id'], foreign_id))
+                    if sync:
+                        self._pull_mapping(
+                            data, metadata, deferred_create_data,
+                            field_mapping,
+                        )
+                if sync:
+                    resource.last_pull = datetime.now()
             if sync and deferred_create_data:
                 for model, dc_data in deferred_create_data.items():
                     self._pull_deferred_create(model, **dc_data)
@@ -297,9 +243,60 @@ class ExternalDataStrategy(models.Model):
         if debug:
             return debug_data, debug_metadata
 
-    def _pull(self, resource, field_mapping, object_vals, data, metadata):
-        self.ensure_one()
+    @api.model
+    def _append_deferred_create_data(self, data, metadata, dc_data):
+        model_model = metadata['model_model']
+        dc_data_model = dc_data.get(model_model)
+        if not dc_data_model:
+            dc_data_model = dc_data[model_model] = {
+                'vals': [],
+                'data': [],
+                'object_vals': [],
+                'metadata': metadata.copy(),
+            }
+        dc_data_model['vals'].append(metadata['vals'])
+        dc_data_model['data'].append(data.copy())
+        dc_data_model['object_vals'].append(metadata['object_vals'])
 
+    @api.model
+    def _pull_mapping(self, data, metadata, dc_data, field_mapping):
+        metadata.update({
+            'field_mapping_id': field_mapping.id,
+            'model_id': field_mapping.model_id.id,
+            'model_model': field_mapping.model_id.model,
+            'processed_keys': [],
+        })
+        vals = False
+        if metadata['operation'] == 'pull':
+            vals = self._pull(field_mapping, data, metadata)
+        elif metadata['operation'] == 'list':
+            vals = self._list(field_mapping, data, metadata)
+        if not vals:
+            return False
+
+        # deferred create
+        record = metadata.get('record')
+        if metadata['deferred_create'] and not record:
+            metadata['vals'] = vals.copy()
+            self._append_deferred_create_data(data, metadata, dc_data)
+            return True
+
+        # post processing
+        postprocess_rules = metadata.get('postprocess_rules')
+        if record and postprocess_rules:
+            metadata.update(pre_post='post')
+            vals = field_mapping.apply_mapping(data, metadata)
+            postprocess_rules.apply_rules(vals, metadata)
+            if metadata.get('drop'):
+                if record and metadata.get('delete'):
+                    record.unlink()
+                return True
+            self._prune_vals(vals, **metadata)
+            metadata['external_objects'].sanitize_values(vals, **metadata)
+            metadata['record'].write(vals)
+
+    @api.model
+    def _pull(self, field_mapping, data, metadata):
         foreign_id = metadata.get('foreign_id')
         resource_id = metadata.get('resource_id')
         if not (foreign_id and resource_id):
@@ -313,6 +310,14 @@ class ExternalDataStrategy(models.Model):
                 ext_object = o
                 break
         if not (ext_object or metadata['deferred_create']):
+            object_vals = {
+                'data_source_id': metadata['data_source_id'],
+                'foreign_type_id': metadata['foreign_type_id'],
+                'resource_ids': [Command.link(metadata['resource_id'])],
+                'foreign_id': foreign_id,
+                'priority': metadata['index'],
+            }
+            metadata['object_vals'] = object_vals.copy()
             ext_object = metadata['external_objects'].create(object_vals)
             metadata['external_objects'] += ext_object
         if ext_object.link_similar_objects(**metadata):
@@ -344,9 +349,9 @@ class ExternalDataStrategy(models.Model):
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
         metadata['postprocess_rules'] += ext_object.rule_ids_post
 
-    def _list(self, resource, field_mapping, object_vals, data, metadata):
-        self.ensure_one()
-
+    @api.model
+    def _list(self, field_mapping, data, metadata):
+        resource = self.env['external.data.resource']
         foreign_id = metadata.get('foreign_id')
         resource_id = metadata.get('resource_id')
         data_source_id = metadata.get('data_source_id')
@@ -502,7 +507,7 @@ class ExternalDataStrategy(models.Model):
         if self.operation != 'push':
             raise UserError(f"Wrong operation type for push: {self.operation}")
 
-        batch = []  # TODO: gather batch if possible, send if filled or no more
+        # TODO: paginated resource
         metadata = {}
         for vals in self._gather_items(metadata=metadata):
             data = self.serializer_id.serialize(vals)

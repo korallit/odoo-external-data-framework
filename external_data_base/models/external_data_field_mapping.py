@@ -124,6 +124,9 @@ class ExternalDataFieldMapping(models.Model):
         'external.data.type',
         string="Foreign Type",
     )
+    object_link_variant_tag = fields.Char(
+        "Object link variant tag"
+    )
     data_source_id = fields.Many2one(
         'external.data.source',
         string="Data source",

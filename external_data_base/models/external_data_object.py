@@ -78,10 +78,11 @@ class ExternalDataObject(models.Model):
         for record in self:
             record.name = record.foreign_id
 
-    def get_object_link(self, model_id):
+    def get_object_link(self, model_id, variant_tag=False):
         self.ensure_one()
         object_link = self.object_link_ids.filtered(
-            lambda r: r.model_id.id == model_id
+            lambda r: r.model_id.id == model_id and
+            r.variant_tag == variant_tag
         )
         msg_tail = f"external object ID {self.id}, model ID {model_id}"
         if not object_link:
@@ -101,8 +102,9 @@ class ExternalDataObject(models.Model):
         self.ensure_one()
         model_id = metadata.get('model_id')
         model_model = metadata.get('model_model')
+        variant_tag = metadata.get('variant_tag')
         # getting model
-        object_link = self.get_object_link(model_id)
+        object_link = self.get_object_link(model_id, variant_tag)
         if object_link:
             self.sanitize_values(vals, prune_false=False, **metadata)
             record = object_link._record()
@@ -113,6 +115,7 @@ class ExternalDataObject(models.Model):
                 self.object_link_ids = [Command.create({
                     'model_id': model_id,
                     'record_id': record.id,
+                    'variant_tag': variant_tag,
                 })]
             else:
                 _logger.error(
@@ -132,6 +135,7 @@ class ExternalDataObject(models.Model):
             return False
         self.ensure_one()
 
+        # TODO: is variant_tag mandatory?
         # find similar object links
         foreign_type_domain = [('model_id', '=', model_id)]
         if not search_own_source:
@@ -146,6 +150,7 @@ class ExternalDataObject(models.Model):
         ]).mapped('object_link_ids').filtered(
             lambda r:
             r.model_id.id == model_id and
+            r.variant_tag == kw.get('variant_tag') and
             r.id not in self.object_link_ids.ids and
             r._record()
         )
@@ -320,6 +325,13 @@ class ExternalDataObjectLink(models.Model):
     object_ids = fields.Many2many(
         'external.data.object',
         string="External objects",
+    )
+    variant_tag = fields.Char(
+        "Variant tag",
+        help=("When multiple records of a certain type "
+              "are linked to one external object, the only way to"
+              "distinguish them is by this tag. "
+              "It comaes from the field mapping.")
     )
 
     @api.depends('model_id', 'record_id')

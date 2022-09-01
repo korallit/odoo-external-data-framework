@@ -38,6 +38,7 @@
 			    <tree>
 				<button string="open record" type="object" name="button_open"/>
 				<field name="name"/>
+				<field name="variant_tag"/>
 				<field name="model_model"/>
 			    </tree>
 			</field>

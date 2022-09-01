@@ -158,16 +158,21 @@ class ExternalDataDebugWizard(models.TransientModel):
             raise ValidationError("No test data")
 
         foreign_type = mapping.foreign_type_id
+        foreign_id_key = foreign_type.field_ids[0].name,
+        foreign_id = data.get(foreign_id_key)
         metadata.update({
             'field_mapping_id': mapping.id,
             'model_id': mapping.model_id.id,
             'model_model': mapping.model_id.model,
             'foreign_type_id': foreign_type.id,
             'foreign_type_name': foreign_type.name,
-            'foreign_id_key': foreign_type.field_ids[0].name,
+            'foreign_id_key': foreign_id_key,
+            'foreign_id': foreign_id,
+            'variant_tag': mapping.object_link_variant_tag,
             'now': datetime.now(),
             'operation': self.operation,
             'prune_false': self.sanitize_prune_false,
+            'processed_keys': [],
             'debug': True,
             'record': record,
         })
