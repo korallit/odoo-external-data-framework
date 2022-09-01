@@ -137,7 +137,9 @@ class ExternalDataSerializer(models.Model):
         # TODO: attrs
         root = etree.Element(tag)
         for item in items:
-            root.append(self._lxml_etree_create_element(item))
+            element = self._lxml_etree_create_element(item)
+            if element:
+                root.append(element)
         return self._serialize_xml(root)
 
     def _serialize_xml(self, root):
@@ -153,7 +155,9 @@ class ExternalDataSerializer(models.Model):
             _logger.error(
                 f"Serializer lxml etree wants a dict, got this: {str(data)}")
             return None
-        tag, attrs = data.get('tag', 'notfound'), data.get('attrs', {})
+        tag, attrs = data.get('tag'), data.get('attrs', {})
+        if not tag:
+            return False
         element = etree.Element(tag, **attrs)
         if data.get('text'):
             element.text = data['text']

@@ -183,13 +183,6 @@ class ExternalDataStrategy(models.Model):
             if not data_generator:
                 continue
             resource.foreign_type_ids = [Command.link(foreign_type.id)]
-            metadata.update({
-                'foreign_type_id': foreign_type.id,
-                'foreign_type_name': foreign_type.name,
-                'foreign_id_key': foreign_type.field_ids[0].name,
-                'now': datetime.now(),
-                'record': False,
-            })
 
             # executing db queries outside of the parsing loop when possible
             field_mappings = field_mappings_all.filtered(
@@ -198,6 +191,14 @@ class ExternalDataStrategy(models.Model):
             external_objects = data_source_objects.filtered(
                 lambda o: o.foreign_type_id.id == foreign_type.id
             )
+            metadata.update({
+                'foreign_type_id': foreign_type.id,
+                'foreign_type_name': foreign_type.name,
+                'foreign_id_key': foreign_type.field_ids[0].name,
+                'external_objects': external_objects,
+                'now': datetime.now(),
+                'record': False,
+            })
             object_vals = {
                 'data_source_id': data_source.id,
                 'foreign_type_id': foreign_type.id,
@@ -241,14 +242,12 @@ class ExternalDataStrategy(models.Model):
                     })
                     if metadata['operation'] == 'pull':
                         vals = self._pull(
-                            resource, field_mapping,
-                            external_objects, object_vals,
+                            resource, field_mapping, object_vals,
                             data, metadata,
                         )
                     elif metadata['operation'] == 'list':
                         vals = self._list(
-                            resource, field_mapping,
-                            external_objects, object_vals,
+                            resource, field_mapping, object_vals,
                             data, metadata,
                         )
                     else:
@@ -298,9 +297,7 @@ class ExternalDataStrategy(models.Model):
         if debug:
             return debug_data, debug_metadata
 
-    def _pull(self, resource, field_mapping,
-              external_objects, object_vals,
-              data, metadata):
+    def _pull(self, resource, field_mapping, object_vals, data, metadata):
         self.ensure_one()
 
         foreign_id = metadata.get('foreign_id')
@@ -310,14 +307,14 @@ class ExternalDataStrategy(models.Model):
 
         # get record and external object
         record = ext_object = False
-        for o in external_objects:
+        for o in metadata['external_objects']:
             if o.foreign_id == foreign_id:
                 o.resource_ids = [Command.link(resource_id)]
                 ext_object = o
                 break
         if not (ext_object or metadata['deferred_create']):
-            ext_object = external_objects.create(object_vals)
-            external_objects += ext_object
+            ext_object = metadata['external_objects'].create(object_vals)
+            metadata['external_objects'] += ext_object
         if ext_object.link_similar_objects(**metadata):
             record = metadata['record'] = ext_object._record(
                 metadata['model_id'])
@@ -336,7 +333,7 @@ class ExternalDataStrategy(models.Model):
 
         # return vals for deferred create
         if not record and metadata['deferred_create']:
-            if external_objects.sanitize_values(vals, **metadata):
+            if metadata['external_objects'].sanitize_values(vals, **metadata):
                 return vals
             else:
                 return False
@@ -347,9 +344,7 @@ class ExternalDataStrategy(models.Model):
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
         metadata['postprocess_rules'] += ext_object.rule_ids_post
 
-    def _list(self, resource, field_mapping,
-              external_objects, object_vals,
-              data, metadata):
+    def _list(self, resource, field_mapping, object_vals, data, metadata):
         self.ensure_one()
 
         foreign_id = metadata.get('foreign_id')
@@ -384,14 +379,14 @@ class ExternalDataStrategy(models.Model):
 
         # return vals for deferred create
         if not record and metadata['deferred_create']:
-            if external_objects.sanitize_values(vals, **metadata):
+            if metadata['external_objects'].sanitize_values(vals, **metadata):
                 return vals
             else:
                 return False
 
         # write resource
         vals_last_mod = vals.get('last_mod')
-        if not record and external_objects.sanitize_values(
+        if not record and metadata['external_objects'].sanitize_values(
                 vals, **metadata):
             metadata['record'] = resource.create(vals)
         elif vals_last_mod and res_last_mod < vals_last_mod:

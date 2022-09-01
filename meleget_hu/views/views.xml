@@ -1,0 +1,60 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+<!--
+    <record model="ir.ui.view" id="meleget_hu.list">
+      <field name="name">meleget_hu list</field>
+      <field name="model">meleget_hu.meleget_hu</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="value"/>
+          <field name="value2"/>
+        </tree>
+      </field>
+    </record>
+-->
+
+    <!-- actions opening views on models -->
+<!--
+    <record model="ir.actions.act_window" id="meleget_hu.action_window">
+      <field name="name">meleget_hu window</field>
+      <field name="res_model">meleget_hu.meleget_hu</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+-->
+
+    <!-- server action to the one above -->
+<!--
+    <record model="ir.actions.server" id="meleget_hu.action_server">
+      <field name="name">meleget_hu server</field>
+      <field name="model_id" ref="model_meleget_hu_meleget_hu"/>
+      <field name="state">code</field>
+      <field name="code">
+        action = {
+          "type": "ir.actions.act_window",
+          "view_mode": "tree,form",
+          "res_model": model._name,
+        }
+      </field>
+    </record>
+-->
+
+    <!-- Top menu item -->
+<!--
+    <menuitem name="meleget_hu" id="meleget_hu.menu_root"/>
+-->
+    <!-- menu categories -->
+<!--
+    <menuitem name="Menu 1" id="meleget_hu.menu_1" parent="meleget_hu.menu_root"/>
+    <menuitem name="Menu 2" id="meleget_hu.menu_2" parent="meleget_hu.menu_root"/>
+-->
+    <!-- actions -->
+<!--
+    <menuitem name="List" id="meleget_hu.menu_1_list" parent="meleget_hu.menu_1"
+              action="meleget_hu.action_window"/>
+    <menuitem name="Server to list" id="meleget_hu" parent="meleget_hu.menu_2"
+              action="meleget_hu.action_server"/>
+-->
+  </data>
+</odoo>

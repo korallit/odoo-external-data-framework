@@ -144,7 +144,7 @@ class ExternalDataRule(models.Model):
         'ir.model',
         "Model",
     )
-    apply_field_mapping_id =  fields.Many2one(
+    apply_field_mapping_id = fields.Many2one(
         'external.data.field.mapping',
         string="Field mapping",
         domain="[('data_source_id', '=', data_source_id)]",
@@ -367,7 +367,7 @@ class ExternalDataRule(models.Model):
     def _get_lambda(self, lambda_str, vals={}):
         if not isinstance(lambda_str, str):
             return False
-        match = re.search(r'lambda( [a-z]+)?:.*', lambda_str.format(**vals))
+        match = re.search(r'\(?lambda( [a-z]+)?:.*\)?', lambda_str.format(**vals))
         if match:
             lambda_str = match.group()
             try:
