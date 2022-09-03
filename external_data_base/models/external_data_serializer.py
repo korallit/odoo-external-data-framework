@@ -297,6 +297,7 @@ class ExternalDataParserLine(models.Model):
             ('tag', "tag"),
             ('attr', "attribute"),
             ('tostring', "tostring"),
+            ('list', "list"),
             ('index', "index (nth of)"),
         ],
     )
@@ -544,6 +545,13 @@ class ExternalDataParserLine(models.Model):
             return chunk.name
         elif self.extract_method == 'tostring':
             return str(chunk)
+        elif self.extract_method == 'list':
+            if isinstance(chunk, (int, str)):
+                return [chunk]
+            elif isinstance(chunk, list):
+                return chunk
+            else:
+                return None
         else:
             return chunk
 

@@ -70,6 +70,7 @@ class ExternalDataRule(models.Model):
             ('apply_field_mapping', "Field mapping"),
             ('fetch_binary', "Fetch binary"),
             ('binary_url', "Binary URL"),
+            ('message_post', "Post a message"),
         ],
         required=True,
     )
@@ -102,9 +103,13 @@ class ExternalDataRule(models.Model):
              "Apply field mapping on recordset browsed by given id(s)"
              ),
             ('fetch_binary', "Fetches a binary from URL and "
-             "encodes it to base64 byte object"
+             "optionally encodes it to base64 byte object"
              ),
             ('binary_url', "Returns url(s) of image/attachment"),
+            ('message_post', "Posts a message on record pointed by value "
+             "with attributes looked up in 'vals' by prefix 'msg_'. "
+             "Processed items popped out from 'vals' afterwards."
+             ),
         ],
         readonly=True,
         compute="_compute_help",
@@ -122,6 +127,7 @@ class ExternalDataRule(models.Model):
         comodel_name='ir.model',
         string="Model",
     )
+    orm_model_model = fields.Char(related='orm_model.model')
     orm_domain = fields.Char("domain")
     orm_limit = fields.Integer("limit")
     orm_filter = fields.Char("filtered(lambda r:")
@@ -144,6 +150,7 @@ class ExternalDataRule(models.Model):
         'ir.model',
         "Model",
     )
+    fetch_binary_encode = fields.Boolean("Encode", default=True)
     apply_field_mapping_id = fields.Many2one(
         'external.data.field.mapping',
         string="Field mapping",
@@ -246,7 +253,9 @@ class ExternalDataRule(models.Model):
             elif rule.operation == 'apply_field_mapping':
                 result = rule.apply_field_mapping(value, metadata.copy())
             elif rule.operation == 'fetch_binary':
-                result = rule._fetch_binary(value)
+                result = rule._fetch_binary(value, rule.fetch_binary_encode)
+            elif rule.operation == 'message_post':
+                rule._message_post(value, vals)
 
             if not isinstance(result, type(None)):
                 vals[rule.key] = result
@@ -367,7 +376,10 @@ class ExternalDataRule(models.Model):
     def _get_lambda(self, lambda_str, vals={}):
         if not isinstance(lambda_str, str):
             return False
-        match = re.search(r'\(?lambda( [a-z]+)?:.*\)?', lambda_str.format(**vals))
+        match = re.search(
+            r'\(?lambda( [a-z]+)?:.*\)?',
+            lambda_str.format(**vals)
+        )
         if match:
             lambda_str = match.group()
             try:
@@ -380,7 +392,7 @@ class ExternalDataRule(models.Model):
         return False
 
     @api.model
-    def _fetch_binary(self, url):
+    def _fetch_binary(self, url, encode=True):
         if not isinstance(url, str):
             _logger.error(f"Invalid URL: {url}")
             return None
@@ -390,7 +402,10 @@ class ExternalDataRule(models.Model):
             _logger.error(e)
             return None
         if isinstance(res.content, bytes):
-            return b64encode(res.content)
+            if encode:
+                return b64encode(res.content)
+            else:
+                return res.content
         return None
 
     def apply_field_mapping(self, ids, metadata):
@@ -432,3 +447,26 @@ class ExternalDataRule(models.Model):
             vals.pop(key)
         self.env['external.data.object'].sanitize_values(vals, **metadata)
         return vals
+
+    @api.model
+    def _message_post(self, record, vals):
+        """Posts a message on record pointed by value
+        with attributes looked up in 'vals' by prefix 'msg_'.
+        Processed items popped out from 'vals' afterwards."""
+        if not isinstance(record, models.Model):
+            _logger.error("Provided value is not an odoo record")
+            return False
+        if not hasattr(record, 'message_post'):
+            _logger.error("Provided record has no 'message_post()' method")
+            return False
+
+        prefix = 'msg_'
+        msg_kwargs = {
+            key[len(prefix):]: vals.pop(key)
+            for key in vals.keys()
+            if key[:len(prefix)] == prefix
+        }
+        try:
+            record.message_post(**msg_kwargs)
+        except Exception as e:
+            _logger.error(e)

@@ -50,4 +50,23 @@
 	<field name="code">records.toggle_skip()</field>
     </record>
 
+    <!-- Strategy -->
+    <record model="ir.actions.server" id="external_data_action_strategy_list">
+	<field name="name">List</field>
+	<field name="model_id" ref="model_external_data_strategy"/>
+	<field name="binding_model_id" ref="model_external_data_strategy"/>
+	<field name="binding_view_types">form</field>
+	<field name="state">code</field>
+	<field name="code">record.list()</field>
+    </record>
+
+    <!-- <record model="ir.actions.server" id="external_data_action_strategy_batch_pull"> -->
+    <!-- 	<field name="name">Batch pull</field> -->
+    <!-- 	<field name="model_id" ref="model_external_data_strategy"/> -->
+    <!-- 	<field name="binding_model_id" ref="model_external_data_strategy"/> -->
+    <!-- 	<field name="binding_view_types">form</field> -->
+    <!-- 	<field name="state">code</field> -->
+    <!-- 	<field name="code">record.batch_pull()</field> -->
+    <!-- </record> -->
+
 </odoo>

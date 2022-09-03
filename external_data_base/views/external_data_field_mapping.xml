@@ -20,10 +20,11 @@
 			<field name="data_source_id"/>
 			<field name="model_id"/>
 			<field name="foreign_type_id"/>
-			<field name="object_link_variant_tag"/>
 			<field name="filter_domain" widget="domain"
 			       options="{'model': 'model_model', 'in_dialog': True}"/>
 			<field name="prune_vals"/>
+			<field name="object_link_variant_tag"/>
+			<field name="skip_write"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">

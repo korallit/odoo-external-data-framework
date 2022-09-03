@@ -177,7 +177,9 @@ class ExternalDataObject(models.Model):
 
     @api.model
     def sanitize_values(self, vals, **kw):
-        if kw.get('operation') in ['pull', 'edit'] and kw.get('model_model'):
+        if (
+                kw.get('operation') in ['pull', 'list', 'edit']
+                and kw.get('model_model')):
             return self._sanitize_vals_pull(vals, **kw)
         elif kw.get('operation') == 'push' and kw.get('foreign_type_id'):
             # TODO: sanitize push values

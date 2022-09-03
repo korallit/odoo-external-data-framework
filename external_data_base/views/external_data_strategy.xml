@@ -42,7 +42,7 @@
 		    <notebook>
 			<page string="Field mappings">
 			    <field name="field_mapping_ids">
-				<tree editable="bottom">
+				<tree>
 				    <field name="sequence" widget="handle"/>
 				    <field name="name"/>
 				    <button string="open" type="object"
@@ -50,6 +50,14 @@
 					    />
 				    <field name="foreign_type_id"/>
 				    <field name="model_id"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Resources">
+			    <field name="resource_ids">
+				<tree>
+				    <field name="priority" widget="handle"/>
+				    <field name="name"/>
 				</tree>
 			    </field>
 			</page>

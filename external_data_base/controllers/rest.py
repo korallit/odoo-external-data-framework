@@ -170,7 +170,7 @@ class ExternalDataController(Controller):
         offset = limit * page
         self.result['pagination'] = {
             'page_size': limit,
-            'requested_page': offset,
+            'requested_page': page,
         }
         return limit, offset
 

@@ -120,6 +120,7 @@ class ExternalDataFieldMapping(models.Model):
         "not included in the mapping or the ruleset",
         default=True,
     )
+    skip_write = fields.Boolean("Skip write")
     foreign_type_id = fields.Many2one(  # TODO: required if not mass edit
         'external.data.type',
         string="Foreign Type",
@@ -167,7 +168,7 @@ class ExternalDataFieldMapping(models.Model):
     def _count_records(self):
         for record in self:
             model = record.model_model
-            domain = eval(record.filter_domain)
+            domain = eval(record.filter_domain) if record.filter_domain else []
             record.record_count = self.env[model].search_count(domain)
 
     def button_details(self):
