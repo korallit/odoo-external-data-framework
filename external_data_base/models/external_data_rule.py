@@ -57,6 +57,7 @@ class ExternalDataRule(models.Model):
         string="Operation",
         selection=[
             ('drop', "Drop item"),
+            ('include', "include"),
             ('exclude', "exclude"),
             ('clear', "clear"),
             ('replace', "regexp replace"),
@@ -78,6 +79,8 @@ class ExternalDataRule(models.Model):
         string="Description",
         selection=[
             ('drop', "Drop item if the conditions met"),
+            ('include', "Does nothing, except registers key as 'processed'. "
+             "Combined with 'prune vals' works like a whitelist."),
             ('exclude', "Pops value from 'vals' dictionary."),
             ('clear', "Set value to 'False'"),
             ('replace', "Replace value with re.sub(pattern, repl, count)"),
@@ -257,12 +260,15 @@ class ExternalDataRule(models.Model):
             elif rule.operation == 'message_post':
                 rule._message_post(value, vals)
 
-            if not isinstance(result, type(None)):
+            if result is None and rule.operation != 'include':
+                return False
+            elif result is not None:
                 vals[rule.key] = result
-                if 'processed_keys' in metadata.keys():
-                    metadata['processed_keys'].append(rule.key)
-                else:
-                    metadata['processed_keys'] = [rule.key]
+
+            if 'processed_keys' in metadata.keys():
+                metadata['processed_keys'].append(rule.key)
+            else:
+                metadata['processed_keys'] = [rule.key]
 
     def _regexp_replace(self, value, vals, multiline=True):
         # TODO: add parameter sub_multiline
