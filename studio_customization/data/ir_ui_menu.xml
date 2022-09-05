@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+  <record id="studio_customization.website_n8n_54d8dc2c-3e89-4df0-ab76-176acd7a585d" model="ir.ui.menu" context="{'studio': True}">
+    <field name="action" ref="studio_customization.n8n_81666b21-01cc-4daa-9ef5-be32995ea828"/>
+    <field name="active" eval="False"/>
+    <field name="groups_id" eval="[(6, 0, [])]"/>
+    <field name="name">n8n</field>
+    <field name="parent_id" ref="website.menu_website_configuration"/>
+    <field name="sequence">102</field>
+    <field name="web_icon" eval="False"/>
+  </record>
+  <record id="studio_customization.website_n8n_5b177ef8-baf3-4ec7-8432-b8d369681feb" model="ir.ui.menu" context="{'studio': True}">
+    <field name="action" ref="base.action_open_website"/>
+    <field name="active" eval="True"/>
+    <field name="groups_id" eval="[(6, 0, [])]"/>
+    <field name="name">N8n</field>
+    <field name="parent_id" ref="website.menu_website_configuration"/>
+    <field name="sequence">101</field>
+    <field name="web_icon" eval="False"/>
+  </record>
+  <record id="studio_customization.website_pending_cate_09c62126-62d8-46f8-8844-0e9d6d13ac76" model="ir.ui.menu" context="{'studio': True}">
+    <field name="action" ref="studio_customization.pending_category_fet_34528e0f-f635-4ac8-856d-4dd3c8d53d16"/>
+    <field name="active" eval="True"/>
+    <field name="groups_id" eval="[(6, 0, [])]"/>
+    <field name="name">Pending category fetcher</field>
+    <field name="parent_id" ref="studio_customization.website_n8n_5b177ef8-baf3-4ec7-8432-b8d369681feb"/>
+    <field name="sequence" eval="False"/>
+    <field name="web_icon" eval="False"/>
+  </record>
+  <record id="studio_customization.website_pending_prod_14cb311c-34c2-4ae0-8867-cc772bd16e87" model="ir.ui.menu" context="{'studio': True}">
+    <field name="action" ref="studio_customization.pending_products_fet_4cbed4c3-2baf-44d3-a290-9b7c60acefbe"/>
+    <field name="active" eval="True"/>
+    <field name="groups_id" eval="[(6, 0, [])]"/>
+    <field name="name">Pending products fetcher</field>
+    <field name="parent_id" ref="studio_customization.website_n8n_5b177ef8-baf3-4ec7-8432-b8d369681feb"/>
+    <field name="sequence">1</field>
+    <field name="web_icon" eval="False"/>
+  </record>
+</odoo>

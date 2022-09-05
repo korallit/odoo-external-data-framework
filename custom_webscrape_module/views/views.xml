@@ -1,0 +1,103 @@
+<odoo>
+    <data>
+
+        <!--<record id="ir_cron_edi_network" model="ir.cron">-->
+        <!--        <field name="name">update.product.price</field>-->
+        <!--        <field name="model_id" ref="model_update_product_price"/>-->
+        <!--        <field name="state">code</field>-->
+        <!--        <field name="code">model.update_product_price()</field>-->
+        <!--        <field name="interval_number">1</field>-->
+        <!--        <field name="interval_type">hours</field>-->
+        <!--        <field name="numbercall">-1</field>-->
+
+        <!--    </record>-->
+
+
+
+
+        <!--        <record id="action_price_update_from_site" model="ir.actions.server">-->
+        <!--            <field name="name">Update product from website</field>-->
+        <!--            <field name="type">ir.actions.server</field>-->
+        <!--            <field name="model_id" ref="odoo_webscrape_module.model_update_product_price"/>-->
+        <!--            <field name="binding_model_id" ref="stock.model_stock_picking"/>-->
+        <!--            <field name="state">code</field>-->
+        <!--            <field name="binding_view_types">list</field>-->
+        <!--            <field name="code">-->
+        <!--                if records:-->
+        <!--                    res = records.update_product_price()-->
+        <!--            </field>-->
+        <!--        </record>-->
+
+        <record model="ir.ui.view" id="odoo_webscarp_fields">
+            <field name="name">webscrapefield</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='variants']" position="after">
+                    <page string="Web Detials">
+                        <group string="Product Origin Information">
+                            <field name="product_url" widget="url"/>
+                            <field name="last_sync"/>
+                            <field name="desciption" widget="html"/>
+                        </group>
+                    </page>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="update_product_price_form" model="ir.ui.view">
+            <field name="name">update.product.price.form</field>
+            <field name="model">update.product.price</field>
+            <field name="arch" type="xml">
+                <form string="Update Product Form">
+                    <sheet>
+                        <group>
+                            <field name="update_all"/>
+                            <field name="update_products" widget="many2many_tags"/>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="total_number_of_batch"/>
+                            </group>
+                            <group>
+                                <field name="start_batch_size"/>
+                                <field name="end_batch_size"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="update_product_price" string="Fetch Data" type="object" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="update_price_wizard" model="ir.actions.act_window">
+            <field name="name">Fetch Data</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">update.product.price</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    <!-- Add Text Here -->
+                </p><p>
+                <!-- More details about what a user can do with this object will be OK -->
+            </p>
+            </field>
+        </record>
+
+
+        <menuitem
+                action="update_price_wizard"
+                id="action_price_update_from_site"
+                parent="stock.menu_stock_root" sequence="5"
+                name="Fetch Products and Categories"/>
+
+    </data>
+    <data noupdate="1">
+
+    </data>
+</odoo>
