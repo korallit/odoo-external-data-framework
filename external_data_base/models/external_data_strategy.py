@@ -296,6 +296,7 @@ class ExternalDataStrategy(models.Model):
             if metadata.get('drop'):
                 if record and metadata.get('delete'):
                     record.unlink()
+                metadata.pop('drop')
                 return True
             self._prune_vals(vals, **metadata)
             metadata['external_objects'].sanitize_values(vals, **metadata)
@@ -340,6 +341,7 @@ class ExternalDataStrategy(models.Model):
         if metadata.get('drop'):
             if record and metadata.get('delete'):
                 record.unlink()
+            metadata.pop('drop')
             return False
         self._prune_vals(vals, **metadata)
 
@@ -389,6 +391,7 @@ class ExternalDataStrategy(models.Model):
         if metadata.get('drop'):
             if resource and metadata.get('delete'):
                 resource.unlink()
+            metadata.pop('drop')
             return False
         self._prune_vals(vals, **metadata)
 
@@ -568,6 +571,7 @@ class ExternalDataStrategy(models.Model):
             vals = mapping.apply_mapping(data, metadata)
             mapping.rule_ids_pre.apply_rules(vals, metadata)
             if metadata.get('drop'):
+                metadata.pop('drop')
                 continue
 
             self._prune_vals(vals, **metadata)
