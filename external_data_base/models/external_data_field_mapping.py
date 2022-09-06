@@ -86,13 +86,10 @@ class ExternalDataFieldMappingLine(models.Model):
         'odoo_field_id',
     )
     def _compute_name(self):
-        for record in self:
-            src = '.'.join([
-                record.field_mapping_id.foreign_type,
-                record.foreign_field_id.name,
-            ])
-            dst = f"{record.odoo_field_id.model}.{record.odoo_field_id.name}"
-            record.name = f"{src} > {dst}"
+        for rec in self:
+            src = f"{rec.foreign_type_id.name}.{rec.foreign_field_id.name}"
+            dst = f"{rec.odoo_field_id.model}.{rec.odoo_field_id.name}"
+            rec.name = f"{src} > {dst}"
 
 
 class ExternalDataFieldMapping(models.Model):
@@ -121,6 +118,7 @@ class ExternalDataFieldMapping(models.Model):
         default=True,
     )
     skip_write = fields.Boolean("Skip write")
+    export_xml_id = fields.Boolean("Export XML ID")
     foreign_type_id = fields.Many2one(  # TODO: required if not mass edit
         'external.data.type',
         string="Foreign Type",
@@ -203,6 +201,9 @@ class ExternalDataFieldMapping(models.Model):
             source_keys = field_mapping_lines.mapped('odoo_field_id.name')
             vals = data.read(source_keys)[0]
             metadata['processed_keys'].append('id')
+            if self.export_xml_id:
+                vals['xml_id'] = data._export_rows([['id']])[0][0]
+                metadata['processed_keys'].append('xml_id')
         else:
             raise ValidationError(
                 "Mapping can process a dictionary (pull) "

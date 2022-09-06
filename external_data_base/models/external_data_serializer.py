@@ -138,7 +138,7 @@ class ExternalDataSerializer(models.Model):
         root = etree.Element(tag)
         for item in items:
             element = self._lxml_etree_create_element(item)
-            if element:
+            if element is not None:
                 root.append(element)
         return self._serialize_xml(root)
 

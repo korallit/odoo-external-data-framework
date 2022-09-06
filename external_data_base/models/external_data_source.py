@@ -146,6 +146,11 @@ class ExternalDataResource(models.Model):
         comodel_name='external.data.object',
         string="External objects",
     )
+    object_relation_ids = fields.One2many(
+        'external.data.object.relation',
+        string="Related objects",
+        inverse_name='resource_id',
+    )
     # TODO: Language
 
     def toggle_skip(self):

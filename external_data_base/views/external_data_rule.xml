@@ -71,10 +71,11 @@
 				       style="font-family: monospace;" class="bg-dark text-light"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'orm_expr')]}">
-				<field name="orm_model"/>
+				<field name="orm_model_id"/>
 				<field name="orm_model_model" invisible="1"/>
-				<field name="orm_domain" widget="domain"
+				<field name="orm_domain_tmplt" widget="domain"
 				       options="{'model': 'orm_model_model', 'in_dialog': True}"/>
+				<field name="orm_domain" style="font-family: monospace;" class="bg-dark text-light"/>
 				<field name="orm_limit"/>
 				<field name="orm_filter" style="font-family: monospace;" class="bg-dark text-light"/>
 				<field name="orm_map" style="font-family: monospace;" class="bg-dark text-light"/>

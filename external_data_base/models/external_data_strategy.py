@@ -331,6 +331,7 @@ class ExternalDataStrategy(models.Model):
         if ext_object.link_similar_objects(**metadata):
             record = metadata['record'] = ext_object._record(
                 metadata['model_id'])
+        metadata['external_object_id'] = ext_object.id
 
         # pre processing
         metadata.update(pre_post='pre')
@@ -547,7 +548,7 @@ class ExternalDataStrategy(models.Model):
         if not records:
             raise UserError("No records found")
 
-        if isinstance(prune_implicit, type(None)):
+        if prune_implicit is None:
             prune_implicit = mapping.prune_vals
         metadata.update({
             'field_mapping_id': mapping.id,

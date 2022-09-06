@@ -53,6 +53,15 @@
 			    </tree>
 			</field>
 		    </page>
+		    <page string="Related resources">
+			<field name="resource_relation_ids">
+			    <tree>
+				<field name="description"/>
+				<field name="resource_id"/>
+				<field name="foreign_type_id"/>
+			    </tree>
+			</field>
+		    </page>
 		    <page string="Processing rules">
 			<separator string="Pre"/>
 			<field name="rule_ids_pre"

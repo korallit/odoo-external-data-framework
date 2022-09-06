@@ -42,7 +42,7 @@
 		    <notebook>
 			<page string="Field mappings">
 			    <field name="field_mapping_ids">
-				<tree>
+				<tree editable="bottom">
 				    <field name="sequence" widget="handle"/>
 				    <field name="name"/>
 				    <button string="open" type="object"

@@ -25,6 +25,7 @@
 			<field name="prune_vals"/>
 			<field name="object_link_variant_tag"/>
 			<field name="skip_write"/>
+			<field name="export_xml_id"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">

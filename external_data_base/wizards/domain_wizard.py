@@ -102,7 +102,7 @@ class DomainWizard(models.TransientModel):
         self.ensure_one()
         try:
             value = self._eval_value()
-        except Expression as e:
+        except Exception as e:
             _logger.error(e)
             return False
 

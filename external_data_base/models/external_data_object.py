@@ -48,6 +48,11 @@ class ExternalDataObject(models.Model):
         'external.data.resource',
         string="Resources",
     )
+    resource_relation_ids = fields.One2many(
+        'external.data.object.relation',
+        string="Related resources",
+        inverse_name='object_id',
+    )
     priority = fields.Integer(default=10)
     rule_ids = fields.One2many(
         'external.data.rule',
@@ -302,6 +307,27 @@ class ExternalDataObject(models.Model):
             "views": [[False, "form"]],
             "res_id": self.id,
         }
+
+
+class ExternalDataObjectRelation(models.Model):
+    _name = 'external.data.object.relation'
+    _description = "External Data Object Related Resources"
+
+    description = fields.Char()
+    object_id = fields.Many2one(
+        'external.data.object',
+        required=True,
+        ondelete='cascade',
+    )
+    resource_id = fields.Many2one(
+        'external.data.resource',
+        required=True,
+        ondelete='cascade',
+    )
+    foreign_type_id = fields.Many2one(
+        'external.data.type',
+        help="The type of the wanted object within the resource.",
+    )
 
 
 class ExternalDataObjectLink(models.Model):

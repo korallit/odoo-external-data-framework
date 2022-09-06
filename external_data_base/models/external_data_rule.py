@@ -126,11 +126,12 @@ class ExternalDataRule(models.Model):
     lambda_str = fields.Text("lambda v:")
     eval_str = fields.Text("eval")
     orm_ref = fields.Char("ORM external ID")
-    orm_model = fields.Many2one(
+    orm_model_id = fields.Many2one(
         comodel_name='ir.model',
         string="Model",
     )
-    orm_model_model = fields.Char(related='orm_model.model')
+    orm_model_model = fields.Char(related='orm_model_id.model')
+    orm_domain_tmplt = fields.Char("domain template")
     orm_domain = fields.Char("domain")
     orm_limit = fields.Integer("limit")
     orm_filter = fields.Char("filtered(lambda r:")
@@ -182,6 +183,11 @@ class ExternalDataRule(models.Model):
         fields += ['field_mapping_id', 'object_id']
         res = super(ExternalDataRule, self).default_get(fields)
         return res
+
+    @api.onchange('orm_domain_tmplt')
+    def _onchange_domain(self):
+        for rec in self:
+            rec.orm_domain = rec.orm_domain_tmplt
 
     @api.depends('operation')
     @api.onchange('operation')
@@ -261,7 +267,7 @@ class ExternalDataRule(models.Model):
                 rule._message_post(value, vals)
 
             if result is None and rule.operation != 'include':
-                return False
+                continue
             elif result is not None:
                 vals[rule.key] = result
 
@@ -297,8 +303,8 @@ class ExternalDataRule(models.Model):
 
     def _orm_expr(self, value, vals):
         self.ensure_one()
-        if self.orm_model:
-            records = self.env[self.orm_model.model]
+        if self.orm_model_id:
+            records = self.env[self.orm_model_id.model]
         else:
             records = value
         if isinstance(records, models.Model):
@@ -311,7 +317,7 @@ class ExternalDataRule(models.Model):
                 self._get_lambda("lambda r:" + self.orm_map, vals)
                 if self.orm_map else False
             )
-            if domain:
+            if isinstance(domain, list):
                 limit = int(self.orm_limit) if self.orm_limit else None
                 records = records.search(domain, limit=limit)
             if f_filter:
