@@ -26,6 +26,8 @@
 			<field name="object_link_variant_tag"/>
 			<field name="skip_write"/>
 			<field name="export_xml_id"/>
+			<field name="sequence"/>
+			<field name="name_is_unique"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">
@@ -49,6 +51,7 @@
 				    <field name="operation" widget="selection"/>
 				    <field name="condition_negate"/>
 				    <field name="condition"/>
+				    <field name="keep"/>
 				    <control>
 					<create string="Add a rule"/>
 					<create string="Add a 'create only' rule"
@@ -74,6 +77,7 @@
 				    <field name="operation" widget="selection"/>
 				    <field name="condition_negate"/>
 				    <field name="condition"/>
+				    <field name="keep"/>
 				    <control>
 					<create string="Add a rule"/>
 					<create string="Add a 'create only' rule"

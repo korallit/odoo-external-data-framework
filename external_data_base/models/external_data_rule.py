@@ -35,6 +35,7 @@ class ExternalDataRule(models.Model):
         "Key/Field",
         required=True,
     )
+    keep = fields.Boolean()
     pre_post = fields.Selection(
         string="Pre/Post",
         selection=[('pre', 'pre'), ('post', 'post')],
@@ -270,7 +271,14 @@ class ExternalDataRule(models.Model):
                 continue
             elif result is not None:
                 vals[rule.key] = result
-
+            if rule.keep:
+                if result is None:  # in case of operation 'include'
+                    result = value
+                keep_key = metadata['foreign_type_name'] + '_' + rule.key
+                if 'keep' not in metadata.keys():
+                    metadata['keep'] = {keep_key: result}
+                else:
+                    metadata['keep'][keep_key] = result
             if 'processed_keys' in metadata.keys():
                 metadata['processed_keys'].append(rule.key)
             else:

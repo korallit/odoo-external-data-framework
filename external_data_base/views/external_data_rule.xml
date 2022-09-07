@@ -41,6 +41,7 @@
 		    <group>
 			<field name="operation" widget="selection"/>
 			<field name="operation_help" widget="selection"/>
+			<field name="keep"/>
 		    </group>
 		    <notebook>
 			<page string="Parameters">

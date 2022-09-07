@@ -100,7 +100,7 @@ class ExternalDataFieldMapping(models.Model):
     name = fields.Char(required=True)
     sequence = fields.Integer(
         required=True,
-        default=1,
+        default=10,
     )
     model_id = fields.Many2one(
         'ir.model',
@@ -161,6 +161,7 @@ class ExternalDataFieldMapping(models.Model):
     )
     test_data = fields.Text("Test data", default="{}")
     test_metadata = fields.Text("Test metadata", default="{}")
+    name_is_unique = fields.Boolean("Name is unique")
 
     @api.depends('filter_domain')
     def _count_records(self):
@@ -220,4 +221,5 @@ class ExternalDataFieldMapping(models.Model):
                 vals[target_key] = vals.get(source_key)
 
             metadata['processed_keys'].append(target_key)
+
         return vals

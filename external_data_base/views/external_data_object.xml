@@ -27,92 +27,97 @@
 	<field name="model">external.data.object</field>
 	<field name="arch" type="xml">
 	    <form>
-		<group>
-		    <field name="foreign_id"/>
-		    <field name="data_source_id"/>
-		    <field name="foreign_type_id"/>
-		</group>
-		<notebook>
-		    <page string="Related records">
-			<field name="object_link_ids">
-			    <tree>
-				<button string="open record" type="object" name="button_open"/>
-				<field name="name"/>
-				<field name="variant_tag"/>
-				<field name="model_model"/>
-			    </tree>
-			</field>
-		    </page>
-		    <page string="Resources">
-			<field name="resource_ids">
-			    <tree>
-				<field name="url"/>
-				<button string="open" type="object"
-					name="button_open"
-					context="{'default_res_id': active_id}"/>
-			    </tree>
-			</field>
-		    </page>
-		    <page string="Related resources">
-			<field name="resource_relation_ids">
-			    <tree>
-				<field name="description"/>
-				<field name="resource_id"/>
-				<field name="foreign_type_id"/>
-			    </tree>
-			</field>
-		    </page>
-		    <page string="Processing rules">
-			<separator string="Pre"/>
-			<field name="rule_ids_pre"
-			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
-			    <tree>
-				<field name="sequence" widget="handle"/>
-				<field name="name"/>
-				<field name="key"/>
-				<field name="operation" widget="selection"/>
-				<field name="condition"/>
-				<control>
-				    <create string="Add a rule"/>
-				    <create string="Add a 'create only' rule"
-					    context="{
-						     'default_condition': 'metadata.get(\'record\')',
-						     }"
-					    />
-				    <create string="Add a default rule"
-					    context="{
-						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
-						     }"
-					    />
-				</control>
-			    </tree>
-			</field>
-			<separator string="Post"/>
-			<field name="rule_ids_post"
-			       context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
-			    <tree>
-				<field name="sequence" widget="handle"/>
-				<field name="name"/>
-				<field name="key"/>
-				<field name="operation" widget="selection"/>
-				<field name="condition"/>
-				<control>
-				    <create string="Add a rule"/>
-				    <create string="Add a 'create only' rule"
-					    context="{
-						     'default_condition': 'metadata.get(\'record\')',
-						     }"
-					    />
-				    <create string="Add a default rule"
-					    context="{
-						     'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
-						     }"
-					    />
-				</control>
-			    </tree>
-			</field>
-		    </page>
-		</notebook>
+		<sheet>
+		    <div class="oe_title">
+			<h1>External Object <field name="name"/></h1>
+		    </div>
+		    <group>
+			<field name="foreign_id"/>
+			<field name="data_source_id"/>
+			<field name="foreign_type_id"/>
+		    </group>
+		    <notebook>
+			<page string="Related records">
+			    <field name="object_link_ids">
+				<tree>
+				    <button string="open record" type="object" name="button_open"/>
+				    <field name="name"/>
+				    <field name="variant_tag"/>
+				    <field name="model_model"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Resources">
+			    <field name="resource_ids">
+				<tree>
+				    <field name="url"/>
+				    <button string="open" type="object"
+					    name="button_open"
+					    context="{'default_res_id': active_id}"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Related resources">
+			    <field name="resource_relation_ids">
+				<tree>
+				    <field name="description"/>
+				    <field name="resource_id"/>
+				    <field name="foreign_type_id"/>
+				</tree>
+			    </field>
+			</page>
+			<page string="Processing rules">
+			    <separator string="Pre"/>
+			    <field name="rule_ids_pre"
+				   context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'pre'}">
+				<tree>
+				    <field name="sequence" widget="handle"/>
+				    <field name="name"/>
+				    <field name="key"/>
+				    <field name="operation" widget="selection"/>
+				    <field name="condition"/>
+				    <control>
+					<create string="Add a rule"/>
+					<create string="Add a 'create only' rule"
+						context="{
+							 'default_condition': 'metadata.get(\'record\')',
+							 }"
+						/>
+					<create string="Add a default rule"
+						context="{
+							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+							 }"
+						/>
+				    </control>
+				</tree>
+			    </field>
+			    <separator string="Post"/>
+			    <field name="rule_ids_post"
+				   context="{'default_object_id': id, 'default_direction': 'pull', 'default_pre_post': 'post'}">
+				<tree>
+				    <field name="sequence" widget="handle"/>
+				    <field name="name"/>
+				    <field name="key"/>
+				    <field name="operation" widget="selection"/>
+				    <field name="condition"/>
+				    <control>
+					<create string="Add a rule"/>
+					<create string="Add a 'create only' rule"
+						context="{
+							 'default_condition': 'metadata.get(\'record\')',
+							 }"
+						/>
+					<create string="Add a default rule"
+						context="{
+							 'default_condition': 'not metadata[\'record\'][metadata[\'key\']]',
+							 }"
+						/>
+				    </control>
+				</tree>
+			    </field>
+			</page>
+		    </notebook>
+		</sheet>
 	    </form>
 	</field>
     </record>

@@ -172,6 +172,7 @@ class ExternalDataStrategy(models.Model):
             'sync': sync,
             'prune': prune,
             'debug': debug,
+            'keep': {},
         }
         if self.operation == 'list':
             metadata['resources'] = self.data_source_id.resource_ids
@@ -225,7 +226,7 @@ class ExternalDataStrategy(models.Model):
                             metadata.get('resource_name'))
                         _logger.error(msg)
                         continue
-                    metadata['variant_tag'] = \
+                    metadata['obj_link_variant_tag'] = \
                         field_mapping.object_link_variant_tag
                     metadata['foreign_id'] = foreign_id
                     if prune:
@@ -277,20 +278,21 @@ class ExternalDataStrategy(models.Model):
         if metadata['operation'] == 'pull':
             vals = self._pull(field_mapping, data, metadata)
         elif metadata['operation'] == 'list':
-            vals = self._list(field_mapping, data, metadata)
-        if not vals:
-            return False
+            self._list(field_mapping, data, metadata)
 
         # deferred create
         record = metadata.get('record')
-        if metadata['deferred_create'] and not record:
+        if metadata['deferred_create'] and vals and not record:
             self._append_deferred_create_data(vals, data, metadata, dc_data)
             return True
 
         # post processing
         postprocess_rules = metadata.get('postprocess_rules')
         if record and postprocess_rules:
-            metadata.update(pre_post='post')
+            metadata.update({
+                'pre_post': 'post',
+                'processed_keys': [],
+            })
             vals = field_mapping.apply_mapping(data, metadata)
             postprocess_rules.apply_rules(vals, metadata)
             if metadata.get('drop'):
@@ -300,7 +302,7 @@ class ExternalDataStrategy(models.Model):
                 return True
             self._prune_vals(vals, **metadata)
             metadata['external_objects'].sanitize_values(vals, **metadata)
-            if not field_mapping.skip_write:
+            if vals and not field_mapping.skip_write:
                 metadata['record'].write(vals)
 
     @api.model
@@ -319,6 +321,7 @@ class ExternalDataStrategy(models.Model):
         }
         metadata['object_vals'] = object_vals.copy()  # for deferred create too
         # get record and external object
+        variant_tag = metadata.get('obj_link_variant_tag', False)
         record = ext_object = False
         for o in metadata['external_objects']:
             if o.foreign_id == foreign_id:
@@ -328,9 +331,11 @@ class ExternalDataStrategy(models.Model):
         if not (ext_object or metadata['deferred_create']):
             ext_object = metadata['external_objects'].create(object_vals)
             metadata['external_objects'] += ext_object
+
+        # looking for record created by other data sources
         if ext_object.link_similar_objects(**metadata):
-            record = metadata['record'] = ext_object._record(
-                metadata['model_id'])
+            record = metadata['record'] = \
+                ext_object._record(metadata['model_id'], variant_tag)
         metadata['external_object_id'] = ext_object.id
 
         # pre processing
@@ -346,6 +351,15 @@ class ExternalDataStrategy(models.Model):
             return False
         self._prune_vals(vals, **metadata)
 
+        # looking for record with the same name and type if name is unique
+        if field_mapping.name_is_unique:
+            metadata['search_link_by_name'] = vals.get('name')
+            if ext_object.link_similar_objects(**metadata):
+                record = metadata['record'] = \
+                    ext_object._record(metadata['model_id'], variant_tag)
+        else:
+            metadata['search_link_by_name'] = False
+
         # return vals for deferred create
         if not record and metadata['deferred_create']:
             if metadata['external_objects'].sanitize_values(vals, **metadata):
@@ -354,9 +368,10 @@ class ExternalDataStrategy(models.Model):
                 return False
 
         # write record
-        if not field_mapping.skip_write:
+        if vals and not field_mapping.skip_write:
             ext_object.write_odoo_record(vals, metadata)
-            metadata['record'] = ext_object._record(metadata['model_id'])
+            metadata['record'] = ext_object._record(
+                metadata['model_id'], variant_tag)
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
         metadata['postprocess_rules'] += ext_object.rule_ids_post
 

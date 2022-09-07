@@ -100,28 +100,29 @@ class ExternalDataObject(models.Model):
             object_link = object_link[0]
         return object_link
 
-    def _record(self, model_id):
-        return self.get_object_link(model_id)._record()
+    def _record(self, model_id, variant_tag=False):
+        return self.get_object_link(model_id, variant_tag)._record()
 
     def write_odoo_record(self, vals, metadata):
         self.ensure_one()
         model_id = metadata.get('model_id')
         model_model = metadata.get('model_model')
-        variant_tag = metadata.get('variant_tag')
-        # getting model
+        variant_tag = metadata.get('obj_link_variant_tag', False)
         object_link = self.get_object_link(model_id, variant_tag)
         if object_link:
             self.sanitize_values(vals, prune_false=False, **metadata)
             record = object_link._record()
             record.write(vals)
+            object_link._compute_name()
         elif model_id and model_model:
             if self.sanitize_values(vals, **metadata):
                 record = self.env[model_model].create(vals)
-                self.object_link_ids = [Command.create({
+                object_link = object_link.create({
                     'model_id': model_id,
                     'record_id': record.id,
                     'variant_tag': variant_tag,
-                })]
+                })
+                self.object_link_ids = [Command.link(object_link.id)]
             else:
                 _logger.error(
                     "Provided values are not enough "
@@ -133,32 +134,41 @@ class ExternalDataObject(models.Model):
             )
         self.last_sync = datetime.now()
 
-    def link_similar_objects(self, model_id, search_own_source=False, **kw):
+    def link_similar_objects(self, model_id, **kwargs):
         """Tries to find similar objects in other data_sources by foreign_id,
         sets on record if found, returns boolean."""
         if not self:
             return False
         self.ensure_one()
 
-        # TODO: is variant_tag mandatory?
-        # find similar object links
-        foreign_type_domain = [('model_id', '=', model_id)]
-        if not search_own_source:
-            foreign_type_domain.append(
-                ('data_source_id', '!=', self.data_source_id.id))
+        # optional arguments
+        variant_tag = kwargs.get('obj_link_variant_tag', False)
+        search_own_source = kwargs.get('search_link_own_source')
+        search_by_name = kwargs.get('search_link_by_name')
 
-        similar_type_ids = self.env['external.data.field.mapping'].search(
-            foreign_type_domain).mapped('foreign_type_id').ids
-        similar_object_links = self.search([
-            ('foreign_id', '=', self.foreign_id),
-            ('foreign_type_id', 'in', similar_type_ids),
-        ]).mapped('object_link_ids').filtered(
-            lambda r:
-            r.model_id.id == model_id and
-            r.variant_tag == kw.get('variant_tag') and
-            r.id not in self.object_link_ids.ids and
-            r._record()
-        )
+        # find similar types > objects > object links
+        object_link_domain = [
+            ('model_id.id', '=', model_id),
+            ('variant_tag', '=', variant_tag),
+        ]
+        if search_by_name:
+            object_link_domain.append(('name', '=', search_by_name))
+        else:
+            similar_mapping_domain = [('model_id', '=', model_id)]
+            if not search_own_source:
+                similar_mapping_domain.append(
+                    ('data_source_id', '!=', self.data_source_id.id))
+            similar_type_ids = self.env['external.data.field.mapping'].search(
+                similar_mapping_domain).mapped('foreign_type_id').ids
+            similar_objs = self.search([
+                ('id', '!=', self.id),
+                ('foreign_id', '=', self.foreign_id),
+                ('foreign_type_id', 'in', similar_type_ids),
+            ])
+            object_link_domain.append(('object_ids', 'in', similar_objs.ids))
+
+        similar_object_links = self.object_link_ids.search(
+            object_link_domain).filtered(lambda r: r._record())
         if not similar_object_links:
             return False
 
@@ -334,7 +344,7 @@ class ExternalDataObjectLink(models.Model):
     _name = 'external.data.object.link'
     _description = "External Data Object Link"
 
-    name = fields.Char(compute='_compute_name')
+    name = fields.Char(compute='_compute_name', store=True)
     model_id = fields.Many2one(
         'ir.model',
         string="Model",
@@ -367,7 +377,7 @@ class ExternalDataObjectLink(models.Model):
         for record in self:
             related_rec = record._record()
             if related_rec:
-                record.name = related_rec.display_name
+                record.name = related_rec.name_get()[0][1]
             else:
                 record.name = "N/A"
 
