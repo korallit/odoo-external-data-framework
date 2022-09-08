@@ -125,7 +125,7 @@ class ExternalDataObject(models.Model):
                 self.object_link_ids = [Command.link(object_link.id)]
             else:
                 _logger.error(
-                    "Provided values are not enough "
+                    "Provided values are not sufficient "
                     f"for creating a record in model {model_model}"
                 )
         else:
@@ -377,7 +377,11 @@ class ExternalDataObjectLink(models.Model):
         for record in self:
             related_rec = record._record()
             if related_rec:
-                record.name = related_rec.name_get()[0][1]
+                name = related_rec.name_get()[0][1]
+                if not len(name) and hasattr(related_rec, 'name'):
+                    record.name = related_rec.name
+                else:
+                    record.name = name
             else:
                 record.name = "N/A"
 
