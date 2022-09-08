@@ -278,7 +278,7 @@ class ExternalDataStrategy(models.Model):
         if metadata['operation'] == 'pull':
             vals = self._pull(field_mapping, data, metadata)
         elif metadata['operation'] == 'list':
-            self._list(field_mapping, data, metadata)
+            vals = self._list(field_mapping, data, metadata)
 
         # deferred create
         record = metadata.get('record')
@@ -374,6 +374,7 @@ class ExternalDataStrategy(models.Model):
                 metadata['model_id'], variant_tag)
         metadata['postprocess_rules'] = field_mapping.rule_ids_post
         metadata['postprocess_rules'] += ext_object.rule_ids_post
+        return vals
 
     @api.model
     def _list(self, field_mapping, data, metadata):
