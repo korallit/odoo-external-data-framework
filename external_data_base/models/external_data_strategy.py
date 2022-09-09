@@ -129,9 +129,12 @@ class ExternalDataStrategy(models.Model):
         else:
             raise MissingError("No resources defined for this lister")
 
-    def batch_pull(self, resource_ids, sync=False, prune=False, do_all=False):
-        i = 0
-        for res_id in resource_ids:
+    def batch_pull(self, resource_ids, sync=False, prune=False,
+                   do_all=False, batch_size=False):
+
+        if not batch_size:
+            batch_size = self.batch_size
+        for i, res_id in enumerate(resource_ids):
             try:
                 self.pull_resource(res_id, sync=sync, prune=prune)
             except Exception as e:
@@ -140,8 +143,7 @@ class ExternalDataStrategy(models.Model):
                 if resource.exists():
                     resource.notes = ("Pull error:\n" + str(e))
                     resource.skip = True
-            i += 1
-            if i == self.batch_size and not do_all:
+            if i == batch_size and not do_all:
                 break
 
     def pull_resource(self, resource_id, sync=False, prune=False, debug=False):

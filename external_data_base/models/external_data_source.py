@@ -97,7 +97,8 @@ class ExternalDataSource(models.Model):
         else:
             raise MissingError("No list strategy defined")
 
-    def batch_pull(self, strategy_id=False, sync=False, prune=False):
+    def batch_pull(self, strategy_id=False, sync=False, prune=False,
+                   batch_size=False):
         res_ids = self.resource_ids.filtered(
             lambda p: not p.skip and (
                 not p.last_pull or
@@ -116,7 +117,8 @@ class ExternalDataSource(models.Model):
             )
 
         if strategy:
-            strategy.batch_pull(res_ids, do_all=True, sync=sync, prune=prune)
+            strategy.batch_pull(res_ids, sync=sync, prune=prune,
+                                batch_size=batch_size)
 
 
 class ExternalDataResource(models.Model):
