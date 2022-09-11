@@ -192,7 +192,6 @@ class ExternalDataStrategy(models.Model):
             data_generator = object_data_generators.get(foreign_type.id)
             if not data_generator:
                 continue
-            resource.foreign_type_ids = [Command.link(foreign_type.id)]
 
             # executing db queries outside of the parsing loop when possible
             field_mappings = field_mappings_all.filtered(
@@ -216,6 +215,8 @@ class ExternalDataStrategy(models.Model):
             # map & process
             for index, data in enumerate(data_generator):
                 metadata['index'] = index
+                if not data:
+                    continue
                 if debug:
                     type_name = metadata['foreign_type_name']
                     debug_data[type_name].append(data.copy())
@@ -241,6 +242,8 @@ class ExternalDataStrategy(models.Model):
                         )
                 if sync:
                     resource.last_pull = datetime.now()
+                    resource.foreign_type_ids = [
+                        Command.link(metadata['foreign_type_id'])]
                 if not ((index + 1) % 100):  # don't want to log #0
                     _logger.info(f"Processing object #{index + 1}")
             if sync and deferred_create_data:
