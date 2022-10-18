@@ -590,6 +590,8 @@ class ExternalDataStrategy(models.Model):
             })
         for data in records:
             metadata['record'] = data
+            # reset processed_keys
+            metadata['processed_keys'] = []
             vals = mapping.apply_mapping(data, metadata)
             mapping.rule_ids_pre.apply_rules(vals, metadata)
             if metadata.get('drop'):
