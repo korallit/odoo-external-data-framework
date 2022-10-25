@@ -306,7 +306,8 @@ class ExternalDataStrategy(models.Model):
                 metadata.pop('drop')
                 return True
             self._prune_vals(vals, **metadata)
-            metadata['external_objects'].sanitize_values(vals, **metadata)
+            vals and metadata['external_objects'].sanitize_values(
+                vals, **metadata)
             if vals and not field_mapping.skip_write:
                 metadata['record'].write(vals)
 
