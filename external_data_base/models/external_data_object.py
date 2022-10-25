@@ -195,13 +195,15 @@ class ExternalDataObject(models.Model):
         if (
                 kw.get('operation') in ['pull', 'list', 'edit']
                 and kw.get('model_model')):
-            return self._sanitize_vals_pull(vals, **kw)
+            quiet = kw.get('pre_post') == 'post'
+            return self._sanitize_vals_pull(vals, quiet=quiet, **kw)
         elif kw.get('operation') == 'push' and kw.get('foreign_type_id'):
             # TODO: sanitize push values
             pass
 
     @api.model
-    def _sanitize_vals_pull(self, vals, model_model, prune_false=True, **kw):
+    def _sanitize_vals_pull(self, vals, model_model, prune_false=True,
+                            quiet=False, **kw):
         model = self.env[model_model]
         fields_data = model.fields_get()
         fields_keys = list(fields_data.keys())
@@ -234,7 +236,7 @@ class ExternalDataObject(models.Model):
                 data.get('type') not in ['one2many', 'many2many'],  # TODO: ???
             ]
             if all(conditions):
-                _logger.warning(
+                quiet or _logger.warning(
                     f"Missing required field of model {model_model}: {name}"
                 )
                 return False
