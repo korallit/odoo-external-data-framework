@@ -180,7 +180,6 @@ class ExternalDataStrategy(models.Model):
             metadata['resources'] = self.data_source_id.resource_ids
         field_mappings_all = self.field_mapping_ids
         foreign_types = field_mappings_all.mapped('foreign_type_id')
-        data_source_objects = data_source.object_ids
         object_data_generators = parser.parse(raw_data)
         foreign_objects = []
         debug_data, debug_metadata = {}, {}
@@ -197,9 +196,10 @@ class ExternalDataStrategy(models.Model):
             field_mappings = field_mappings_all.filtered(
                 lambda m: m.foreign_type_id.id == foreign_type.id
             )
-            external_objects = data_source_objects.filtered(
-                lambda o: o.foreign_type_id.id == foreign_type.id
-            )
+            external_objects = self.env['external.data.object'].search([
+                ('data_source_id', '=', data_source.id),
+                ('foreign_type_id', '=', foreign_type.id),
+            ])
             metadata.update({
                 'foreign_type_id': foreign_type.id,
                 'foreign_type_name': foreign_type.name,
