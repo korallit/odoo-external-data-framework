@@ -159,9 +159,11 @@ class ExternalDataStrategy(models.Model):
         # fetch
         raw_data = self.transporter_id.fetch(resource_id)
 
-        # parse
+        # extract & parse
         data_source = self.data_source_id
         parser = self.serializer_id
+        processed_data = parser.extraxt(raw_data)
+
         metadata = {  # TODO: could it be the context?
             'operation': self.operation,
             'deferred_create': self.deferred_create,
@@ -180,7 +182,7 @@ class ExternalDataStrategy(models.Model):
             metadata['resources'] = self.data_source_id.resource_ids
         field_mappings_all = self.field_mapping_ids
         foreign_types = field_mappings_all.mapped('foreign_type_id')
-        object_data_generators = parser.parse(raw_data)
+        object_data_generators = parser.parse(processed_data)
         foreign_objects = []
         debug_data, debug_metadata = {}, {}
         deferred_create_data = {}
