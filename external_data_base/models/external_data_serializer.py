@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import gzip
 import json
 import jmespath
 from io import BufferedReader
@@ -98,6 +99,10 @@ class ExternalDataSerializer(models.Model):
         return data
 
     def extraxt(self, data):
+        self.ensure_one()
+        # TODO: check if data is bytes
+        if self.packaging == 'gzip':
+            return gzip.decompress(data)
         return data
 
     def parse(self, data):
