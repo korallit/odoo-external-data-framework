@@ -21,4 +21,4 @@ class IrHttp(AbstractModel):
         if not user_id:
             raise BadRequest("API key invalid")
 
-        request.uid = user_id
+        request.update_env(user=user_id)
