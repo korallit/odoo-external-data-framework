@@ -8,6 +8,7 @@
 	    <tree>
 		<field name="name"/>
 		<field name="engine"/>
+		<field name="packaging"/>
 	    </tree>
 	</field>
     </record>
@@ -29,6 +30,7 @@
 		    <group>
 			<field name="name"/>
 			<field name="engine"/>
+			<field name="packaging"/>
 			<field name="pretty_print"
 			       attrs="{'invisible': [('engine', 'not in', ['json', 'lxml_etree'])]}"/>
 			<field name="lxml_root"
