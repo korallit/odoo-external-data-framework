@@ -110,7 +110,7 @@ class ExternalDataDebugWizard(models.TransientModel):
         else:
             self.output = (
                 "Something is missing, or "
-                f"operation '{self.sub_operation}' is not implemented yet..."
+                "operation '{}' is not implemented yet...".format(self.sub_operation)
             )
 
         if result:

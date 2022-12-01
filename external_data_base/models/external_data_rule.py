@@ -199,7 +199,7 @@ class ExternalDataRule(models.Model):
     def apply_rules(self, vals, metadata={}):
         if not isinstance(vals, dict):
             raise ValidationError(
-                f"vals should be a dictionary, got this: {vals}"
+                "vals should be a dictionary, got this: {}".format(vals)
             )
 
         for rule in self:
@@ -240,7 +240,7 @@ class ExternalDataRule(models.Model):
                 result = rule._parse_time(value)
             elif rule.operation == 'lambda' and rule.lambda_str:
                 if rule.lambda_str:
-                    lambda_str = f"(lambda v: {rule.lambda_str})"
+                    lambda_str = "(lambda v: {})".format(rule.lambda_str)
                     f = rule._get_lambda(lambda_str, vals)
                     if f:
                         result = f(value)
@@ -352,7 +352,7 @@ class ExternalDataRule(models.Model):
                 domain = eval(domain_str)
             except SyntaxError:
                 _logger.error(
-                    f"Failed to evaluate domain string: {domain_str}"
+                    "Failed to evaluate domain string: {}".format(domain_str)
                 )
                 return False
             if isinstance(domain, list):
@@ -389,7 +389,7 @@ class ExternalDataRule(models.Model):
         try:
             return eval(expr)
         except SyntaxError:
-            _logger.error(f"Failed to evaluate expression: {expr}")
+            _logger.error("Failed to evaluate expression: {}".format(expr))
             return None
 
     @api.model
@@ -407,14 +407,14 @@ class ExternalDataRule(models.Model):
                 is_callable = callable(f)
                 return f if is_callable else is_callable
             except SyntaxError:
-                _logger.error(f"Failed to evaluate lambda: {lambda_str}")
+                _logger.error("Failed to evaluate lambda: {}".format(lambda_str))
                 return False
         return False
 
     @api.model
     def _fetch_binary(self, url, encode=True):
         if not isinstance(url, str):
-            _logger.error(f"Invalid URL: {url}")
+            _logger.error("Invalid URL: {}".format(url))
             return None
         try:
             res = requests.get(url)

@@ -158,7 +158,7 @@ class ExternalDataSerializer(models.Model):
     def _lxml_etree_create_element(self, data):
         if not isinstance(data, dict):
             _logger.error(
-                f"Serializer lxml etree wants a dict, got this: {str(data)}")
+                "Serializer lxml etree wants a dict, got this: {}".format(str(data)))
             return None
         tag, attrs = data.get('tag'), data.get('attrs', {})
         if not tag:
@@ -189,7 +189,7 @@ class ExternalDataSerializer(models.Model):
         # TODO: iterate over rules
         self.ensure_one()
         if not isinstance(items, list):
-            _logger.warning(f"Items has to be a list, got this: {items}")
+            _logger.warning("Items has to be a list, got this: {}".format(items))
             return False
         expressions = self.jmespath_line_ids
         if not expressions:
@@ -317,7 +317,7 @@ class ExternalDataParserLine(models.Model):
                     field_name,
                     record.foreign_field_id.name,
                 ])
-            record.name = f"{field_name}: {record.path}"
+            record.name = "{}: {}".format(field_name, record.path)
 
     def objects(self, raw_data):
         "Returns a dict of object data generators"
@@ -388,7 +388,7 @@ class ExternalDataParserLine(models.Model):
 
             new_data = rule.execute(data)
             if new_data is None:
-                msg = f"Parse rule (ID {rule.id}) execution returned no data"
+                msg = "Parse rule (ID {}) execution returned no data".format(rule.id)
                 _logger.debug(msg)
                 continue
 
@@ -404,7 +404,7 @@ class ExternalDataParserLine(models.Model):
                 child_rules = rule.child_ids
                 if rule.foreign_field_id and len(child_rules) > 1:
                     _logger.warning(
-                        f"Field rule ID {rule.id} has multiple children!"
+                        "Field rule ID {} has multiple children!".format(rule.id) +
                         "Processing the first one only."
                     )
                     child_rules = child_rules[0]

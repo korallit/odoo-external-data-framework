@@ -121,7 +121,7 @@ class ExternalDataStrategy(models.Model):
     def list(self):
         self.ensure_one()
         if self.operation != 'list':
-            raise UserError(f"Wrong operation type for pull: {self.operation}")
+            raise UserError("Wrong operation type for pull: {}".format(self.operation))
         if len(self.resource_ids) == 1:
             self.pull_resource(self.resource_ids.id, sync=True, prune=True)
         elif len(self.resource_ids) > 1:
@@ -149,12 +149,12 @@ class ExternalDataStrategy(models.Model):
     def pull_resource(self, resource_id, sync=False, prune=False, debug=False):
         self.ensure_one()
         if self.operation not in ['list', 'pull']:
-            raise UserError(f"Wrong operation type for pull: {self.operation}")
+            raise UserError("Wrong operation type for pull: {}".format(self.operation))
         resource = self.env['external.data.resource'].browse(resource_id)
         if not resource.exists():
-            raise MissingError(f"Missing external resource ID {resource_id}")
+            raise MissingError("Missing external resource ID {}".format(resource_id))
         resource_name = resource.name
-        _logger.info(f"Pulling resource {resource_name}")
+        _logger.info("Pulling resource {}".format(resource_name))
 
         # fetch
         raw_data = self.transporter_id.fetch(resource_id)
@@ -189,7 +189,7 @@ class ExternalDataStrategy(models.Model):
         for foreign_type in foreign_types:
             if not foreign_type.field_ids:
                 raise MissingError(
-                    f"No fields defined for foreign type ID {foreign_type.id}")
+                    "No fields defined for foreign type ID {}".format(foreign_type.id))
             data_generator = object_data_generators.get(foreign_type.id)
             if not data_generator:
                 continue
@@ -247,7 +247,7 @@ class ExternalDataStrategy(models.Model):
                     resource.foreign_type_ids = [
                         Command.link(metadata['foreign_type_id'])]
                 if not ((index + 1) % 100):  # don't want to log #0
-                    _logger.info(f"Processing object #{index + 1}")
+                    _logger.info("Processing object #{}".format(index + 1))
             if sync and deferred_create_data:
                 for model, dc_data in deferred_create_data.items():
                     self._pull_deferred_create(model, **dc_data)
@@ -433,7 +433,7 @@ class ExternalDataStrategy(models.Model):
                 vals, **metadata):
             metadata['record'] = metadata['resources'].create(vals)
         elif vals_last_mod and res_last_mod < vals_last_mod:
-            msg = f"Updating resource #{index}: {foreign_id}"
+            msg = "Updating resource #{}: {}".format(index, foreign_id)
             _logger.debug(msg)
             resource.write(vals)
 
@@ -456,7 +456,7 @@ class ExternalDataStrategy(models.Model):
             assert isinstance(metadata.get(key), int)
 
         # creating records
-        _logger.info(f"Creating {len(vals)} records in model {model_model}")
+        _logger.info("Creating {} records in model {}".format(len(vals), model_model))
         records = self.env[model_model].create(vals)
 
         # getting field mapping and resource
@@ -509,7 +509,7 @@ class ExternalDataStrategy(models.Model):
     def mass_edit(self, field_mapping_id=False, debug=False):
         self.ensure_one()
         if self.operation != 'edit':
-            raise UserError(f"Wrong operation type for edit: {self.operation}")
+            raise UserError("Wrong operation type for edit: {}".format(self.operation))
 
         debug_data = []
         metadata = {'updated_ids': []}
@@ -519,11 +519,11 @@ class ExternalDataStrategy(models.Model):
             try:
                 record = self.env[model_model].browse(res_id).exists()
             except Exception as e:
-                _logger.error(f"An error occured while retrieving record: {e}")
+                _logger.error("An error occured while retrieving record: {}".format(e))
                 continue
             if not record:
                 _logger.error(
-                    f"Could not find record: ({model_model}, {res_id})")
+                    "Could not find record: ({}, {})".format(model_model, res_id))
                 continue
 
             self.env['external.data.object'].sanitize_values(vals, **metadata)
@@ -543,7 +543,7 @@ class ExternalDataStrategy(models.Model):
     def push(self, field_mapping_id=False):
         self.ensure_one()
         if self.operation != 'push':
-            raise UserError(f"Wrong operation type for push: {self.operation}")
+            raise UserError("Wrong operation type for push: {}".format(self.operation))
 
         # TODO: paginated resource
         metadata = {}

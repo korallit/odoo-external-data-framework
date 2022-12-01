@@ -137,7 +137,7 @@ class ExternalDataController(Controller):
         elif self.strategy and (resource not in self.valid_resources):
             self.result['message'] = (
                 "No valid resource found, fallback to 'info'. \n"
-                f"Valid resource types: {', '.join(self.valid_resources)}"
+                "Valid resource types: {}".format(', '.join(self.valid_resources))
             )
             resource = 'info'
         self.result['resource'] = resource
@@ -160,9 +160,9 @@ class ExternalDataController(Controller):
                   (resource == 'item' and self.params.get('res_id'))):
                 self._get_items(metadata)
             else:
-                raise UserError(f"Invalid resource: {resource}")
+                raise UserError("Invalid resource: {}".format(resource))
         else:
-            raise UserError(f"Invalid method: {method}")
+            raise UserError("Invalid method: {}".format(method))
 
     def _get_pagination(self):
         page = int(self.params.get('page', 0))

@@ -126,7 +126,7 @@ class DomainWizard(models.TransientModel):
         domain_str_list = []
         for leaf in domain:
             if isinstance(leaf, str):
-                domain_str_list.append(f"'{leaf}'")
+                domain_str_list.append("'{}'".format(leaf))
             else:
                 domain_str_list.append(str(leaf))
         domain_str = "[\n  "

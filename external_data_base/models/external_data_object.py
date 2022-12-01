@@ -89,13 +89,13 @@ class ExternalDataObject(models.Model):
             lambda r: r.model_id.id == model_id and
             r.variant_tag == variant_tag
         )
-        msg_tail = f"external object ID {self.id}, model ID {model_id}"
+        msg_tail = "external object ID {}, model ID {}".format(self.id, model_id)
         if not object_link:
-            _logger.warning(f"No object link found: {msg_tail}")
+            _logger.warning("No object link found: {}".format(msg_tail))
         elif len(object_link) > 1:
             _logger.warning(
                 "Multiple object link found, "
-                f"consider data consolidation: {msg_tail}"
+                "consider data consolidation: {}".format(msg_tail)
             )
             object_link = object_link[0]
         return object_link
@@ -126,7 +126,7 @@ class ExternalDataObject(models.Model):
             else:
                 _logger.error(
                     "Provided values are not sufficient "
-                    f"for creating a record in model {model_model}"
+                    "for creating a record in model {}".format(model_model)
                 )
         else:
             raise MissingError(
@@ -174,7 +174,7 @@ class ExternalDataObject(models.Model):
 
         _logger.info(
             "Adding similar object links ids to object "
-            f"ID {self.id}: {similar_object_links.ids}"
+            "ID {}: {}".format(self.id, similar_object_links.ids)
         )
         self.object_link_ids = [
             Command.link(link.id) for link in similar_object_links
@@ -237,7 +237,7 @@ class ExternalDataObject(models.Model):
             ]
             if all(conditions):
                 quiet or _logger.warning(
-                    f"Missing required field of model {model_model}: {name}"
+                    "Missing required field of model {}: {}".format(model_model, name)
                 )
                 return False
         return True

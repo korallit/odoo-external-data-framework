@@ -87,9 +87,9 @@ class ExternalDataFieldMappingLine(models.Model):
     )
     def _compute_name(self):
         for rec in self:
-            src = f"{rec.foreign_type_id.name}.{rec.foreign_field_id.name}"
-            dst = f"{rec.odoo_field_id.model}.{rec.odoo_field_id.name}"
-            rec.name = f"{src} > {dst}"
+            src = "{}.{}".format(rec.foreign_type_id.name, rec.foreign_field_id.name)
+            dst = "{}.{}".format(rec.odoo_field_id.model, rec.odoo_field_id.name)
+            rec.name = "{} > {}".format(src, dst)
 
 
 class ExternalDataFieldMapping(models.Model):
