@@ -13,7 +13,7 @@
     'website': "http://www.yourcompany.com",
 
     'category': 'Technical',
-    'version': '0.9',
+    'version': '12.0.9',
 
     # any module necessary for this one to work correctly
     'depends': ['base'],
