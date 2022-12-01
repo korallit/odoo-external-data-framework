@@ -3,9 +3,9 @@
 import logging
 
 from odoo import api, fields, models
-from odoo.fields import Command
 from odoo.addons.http_routing.models.ir_http import slugify_one
 from odoo.exceptions import MissingError
+from ..tools.command import Command
 
 _logger = logging.getLogger(__name__)
 

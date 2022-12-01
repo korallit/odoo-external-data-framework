@@ -3,10 +3,10 @@
 from datetime import datetime
 
 from odoo import api, fields, models
-from odoo.fields import Command
 from odoo.osv import expression
 from odoo.addons.http_routing.models.ir_http import slugify_one
 from odoo.exceptions import MissingError, UserError
+from ..tools.command import Command
 
 import logging
 _logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ import re
 from datetime import datetime
 from odoo import api, fields, models
 from odoo.exceptions import MissingError, UserError
-from odoo.fields import Command
 from odoo.tools import image
+from ..tools.command import Command
 
 import logging
 _logger = logging.getLogger(__name__)
