@@ -35,7 +35,7 @@
 		    <div class="oe_button_box" name="button_box">
 			<button class="oe_stat_button" icon="fa-gears"
 				type="action" name="external_data_base.open_strategy_list"
-				domain="[('data_source_id', '=', acitve_id)]">
+				domain="[('data_source_id', '=', active_id)]">
 			    <field name="strategy_count" widget="statinfo" string="Strategies"/>
 			</button>
 		    </div>
