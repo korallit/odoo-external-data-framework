@@ -357,9 +357,9 @@ class ExternalDataObjectLink(models.Model):
         "Model name",
         related='model_id.model',
     )
-    record_id = fields.Many2oneReference(
-        "Related record",
-        model_field='model_model',
+    record_id = fields.Integer(
+        "Related record ID",
+        # model_field='model_model',  # used in Many2oneReference fields
         required=True,
     )
     object_ids = fields.Many2many(
