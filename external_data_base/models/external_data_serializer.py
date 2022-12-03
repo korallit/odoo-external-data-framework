@@ -3,7 +3,8 @@
 import gzip
 import json
 import jmespath
-from io import BufferedReader
+import xlsxwriter
+from io import BufferedReader, BytesIO
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -31,7 +32,7 @@ class ExternalDataSerializer(models.Model):
             ('lxml_etree', "lxml.etree"),
             ('csv', "CSV"),
             ('qweb', "Qweb"),
-            ('custom', "custom"),
+            ('xlsx', "xlsx"),
         ],
         required=True,
         default='json',
@@ -43,7 +44,6 @@ class ExternalDataSerializer(models.Model):
         string="Qweb template",
         domain="[('type', '=', 'qweb')]"
     )
-    custom_name = fields.Char("Custom method name")
     jmespath_line_ids = fields.One2many(
         'external.data.jmespath.line',
         inverse_name='serializer_id',
@@ -121,6 +121,11 @@ class ExternalDataSerializer(models.Model):
             return self._render_lxml_etree(chunk)
         elif self.engine == 'qweb':
             return self._render_qweb(data, metadata)
+        else:
+            method_name = '_render_' + self.engine
+            if hasattr(self, method_name):
+                renderer = self.getattr(method_name)
+                return renderer(data, metadata)
         return False
 
     def _render_json(self, data, indent=None):
@@ -162,7 +167,7 @@ class ExternalDataSerializer(models.Model):
             return None
         tag, attrs = data.get('tag'), data.get('attrs', {})
         if not tag:
-            return False
+            return None
         element = etree.Element(tag, **attrs)
         if data.get('text'):
             element.text = data['text']
@@ -184,6 +189,30 @@ class ExternalDataSerializer(models.Model):
         msg = "No Qweb template specified"
         _logger.error(msg)
         return msg
+
+    def _render_xlsx(self, data, metadata):
+        items = data.get('items')
+        if not isinstance(items, list):
+            return False
+
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        worksheet = workbook.add_worksheet()
+
+        def fill_row(row_nr, row_data):
+            for cell_nr, cell_data in enumerate(row_data):
+                worksheet.write(row_nr, cell_nr, cell_data)
+
+        # write header
+        fill_row(0, items[0].keys())
+
+        # write values
+        for row, item in enumerate(items):
+            fill_row(row, item.values())
+
+        workbook.close()
+        output.seek(0)
+        return output
 
     def rearrange(self, items, metadata={}):
         # TODO: iterate over rules
