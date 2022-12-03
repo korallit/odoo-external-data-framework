@@ -58,6 +58,8 @@ class ExternalDataController(Controller):
         '<string:resource>',
         '/external-data/web/<string:data_source>/<string:strategy>/'
         '<string:resource>/<int:res_id>',
+        '/external-data/web/<string:data_source>/<string:strategy>/'
+        '<string:resource>/<string:export_filename>',
         # strategy by ID
         '/external-data/web/<string:data_source>/strategy/<int:strategy_id>',
         '/external-data/web/<string:data_source>/strategy/<int:strategy_id>/'
