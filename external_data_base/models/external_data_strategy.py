@@ -64,12 +64,32 @@ class ExternalDataStrategy(models.Model):
     )
     batch_size = fields.Integer("Batch size", default=10)
     exposed = fields.Boolean("Exposed to REST")
+    export_filename = fields.Char(
+        "Export filename",
+        default="export",
+    )
+    export_url = fields.Char(
+        string="Export URL",
+        comute='_compute_export_url',
+    )
 
     @api.depends('name')
     @api.onchange('name')
     def _compute_slug(self):
         for record in self:
             record.slug = slugify_one(record.name)
+
+    @api.depends('export_filename', 'slug')
+    @api.onchange('export_filename', 'slug')
+    def _compute_export_url(self):
+        for record in self:
+            path_parts = [
+                "external-data", "web",
+                record.data_source.slug,
+                record.slug, "items",
+                record.export_filename,
+            ]
+            record.export_url = '/'.join(path_parts)
 
     def button_details(self):
         self.ensure_one()
