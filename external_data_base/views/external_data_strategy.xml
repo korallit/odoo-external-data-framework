@@ -29,7 +29,7 @@
 			<field name="exposed"/>
 			<field name="export_filename"
 			       attrs="{'invisible': [('exposed', '=', False)]}"/>
-			<field name="export_url" widget="url"
+			<field name="export_url" widget="url" readonly="1"
 			       attrs="{'invisible': [('exposed', '=', False)]}"/>
 		    </group>
 		    <group>
