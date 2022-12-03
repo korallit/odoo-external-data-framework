@@ -208,7 +208,7 @@ class ExternalDataSerializer(models.Model):
 
         # write values
         for row, item in enumerate(items):
-            fill_row(row, item.values())
+            fill_row(row+1, item.values())
 
         workbook.close()
         output.seek(0)
