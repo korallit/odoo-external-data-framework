@@ -124,7 +124,7 @@ class ExternalDataSerializer(models.Model):
         else:
             method_name = '_render_' + self.engine
             if hasattr(self, method_name):
-                renderer = self.getattr(method_name)
+                renderer = getattr(self, method_name)
                 return renderer(data, metadata)
         return False
 
