@@ -27,6 +27,10 @@
 			<field name="slug"/>
 			<field name="operation"/>
 			<field name="exposed"/>
+			<field name="export_filename"
+			       attrs="{'invisible': [('exposed', '=', False)]}"/>
+			<field name="export_url" widget="url"
+			       attrs="{'invisible': [('exposed', '=', False)]}"/>
 		    </group>
 		    <group>
 			<field name="batch_size"/>
