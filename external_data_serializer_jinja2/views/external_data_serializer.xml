@@ -8,7 +8,8 @@
 	<field name="arch" type="xml">
 	    <xpath expr="//notebook" position="inside">
 		<page string="Jinja2 settings" attrs="{'invisible': [('engine', '!=', 'jinja2')]}">
-		    <field name="jinja2_template"/>
+		    <field name="jinja2_template"
+			   style="font-family: monospace;" class="bg-dark text-light px-2"/>
 		</page>
 	    </xpath>
 	</field>
