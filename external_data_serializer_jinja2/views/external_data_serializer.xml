@@ -7,7 +7,7 @@
 	<field name="model">external.data.serializer</field>
 	<field name="arch" type="xml">
 	    <xpath expr="//notebook" position="inside">
-		<page string="Jinja2 settings" attrs="{'invisible': [('engine', '=', 'jinja2')]}">
+		<page string="Jinja2 settings" attrs="{'invisible': [('engine', '!=', 'jinja2')]}">
 		    <field name="jinja2_template"/>
 		</page>
 	    </xpath>
