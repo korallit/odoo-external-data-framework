@@ -52,7 +52,7 @@ class ExternalDataSerializer(models.Model):
         'external.data.parser.line',
         inverse_name='serializer_id',
         string="Directives",
-        domain="[('engine', '=', engine)]",
+        domain=lambda r: [('engine', '=', r.engine)],  # TODO: Is it really necessery???
     )
     parser_line_count = fields.Integer(
         compute='_compute_parser_line_count',
