@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="external_data_serializer_form_view_inherit" model="ir.ui.view">
+	<field name="inherit_id" ref="external_data_base.external_data_serializer_form_view"/>
+	<field name="arch" type="xml">
+	    <xpath expr="//notebook" position="inside">
+		<page string="Jinja2 settings" attrs="{'invisible': [('jinja2_template', '=', False)]}">
+		    <field name="jinja2_template"/>
+		</page>
+	    </xpath>
+	</field>
+    </record>
+
+</odoo>
