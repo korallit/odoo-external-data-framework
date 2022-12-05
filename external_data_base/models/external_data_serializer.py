@@ -109,6 +109,25 @@ class ExternalDataSerializer(models.Model):
         self.ensure_one()
         return self.parser_line_ids.objects(data)
 
+    def rearrange(self, items, metadata={}):
+        # TODO: iterate over rules
+        self.ensure_one()
+        if not isinstance(items, list):
+            _logger.warning(f"Items has to be a list, got this: {items}")
+            return False
+        expressions = self.jmespath_line_ids
+        if not expressions:
+            return items
+        expr_generators = expressions.get_jmespath_generators()
+        items_new = []
+        for vals in items:
+            for expr in expr_generators:
+                vals_new = expr({'vals': vals, 'metadata': metadata})
+                if not vals_new:
+                    continue
+                items_new.append(vals_new)
+        return items_new
+
     def render(self, data, metadata={}, key=False):
         self.ensure_one()
         method_name = '_render_' + self.engine
@@ -203,25 +222,6 @@ class ExternalDataSerializer(models.Model):
         workbook.close()
         output.seek(0)
         return output
-
-    def rearrange(self, items, metadata={}):
-        # TODO: iterate over rules
-        self.ensure_one()
-        if not isinstance(items, list):
-            _logger.warning(f"Items has to be a list, got this: {items}")
-            return False
-        expressions = self.jmespath_line_ids
-        if not expressions:
-            return items
-        expr_generators = expressions.get_jmespath_generators()
-        items_new = []
-        for vals in items:
-            for expr in expr_generators:
-                vals_new = expr({'vals': vals, 'metadata': metadata})
-                if not vals_new:
-                    continue
-                items_new.append(vals_new)
-        return items_new
 
 
 class ExternalDataJMESPathLine(models.Model):
