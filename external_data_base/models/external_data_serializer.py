@@ -444,12 +444,14 @@ class ExternalDataParserLine(models.Model):
 
     def execute(self, data):
         self.ensure_one()
-        if self.engine == 'lxml_etree':
-            data_prep = self._prepare_lxml_etree(data)
-            return self._execute_lxml_etree(data_prep)
-        if self.engine == 'bs':
-            data_prep = self._prepare_bs(data)
-            return self._execute_bs(data_prep)
+
+        # preparing data, by running a model method
+        data = self.prepare(data, self.engine)
+
+        exec_method_name = '_execute_' + self.engine
+        if hasattr(self, exec_method_name):
+            exec_method = getattr(self, exec_method_name)
+            exec_method(data)
         else:
             raise ValidationError("Engine is not supported yet")
 
@@ -581,10 +583,10 @@ class ExternalDataParserLine(models.Model):
 
     @api.model
     def prepare(self, data, engine):
-        if engine == 'lxml_etree':
-            return self._prepare_lxml_etree(data)
-        if engine == 'bs':
-            return self._prepare_bs(data)
+        prep_method_name = '_prepare_' + engine
+        if hasattr(self, prep_method_name):
+            prep_method = getattr(self, prep_method_name)
+            return prep_method(data)
         else:
             raise ValidationError("Engine is not supported yet")
 
