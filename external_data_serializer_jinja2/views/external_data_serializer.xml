@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="external_data_serializer_form_view_inherit" model="ir.ui.view">
-	<field name="inherit_id" ref="external_data_serializer.external_data_serializer_form_view"/>
+	<field name="inherit_id" ref="external_data_base.external_data_serializer_form_view"/>
 	<field name="name">External Data Serializer Jinja2</field>
 	<field name="model">external.data.serializer</field>
 	<field name="arch" type="xml">
