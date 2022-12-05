@@ -30,7 +30,6 @@ class ExternalDataSerializer(models.Model):
             ('json', "JSON"),
             ('bs', "BeautifulSoup"),
             ('lxml_etree', "lxml.etree"),
-            ('csv', "CSV"),
             ('qweb', "Qweb"),
             ('xlsx', "xlsx"),
         ],
@@ -112,23 +111,13 @@ class ExternalDataSerializer(models.Model):
 
     def render(self, data, metadata={}, key=False):
         self.ensure_one()
-        if key:
-            chunk = data.get(key)
-
-        if self.engine == 'json':
-            return self._render_json(data)
-        elif self.engine == 'lxml_etree':
-            return self._render_lxml_etree(chunk)
-        elif self.engine == 'qweb':
-            return self._render_qweb(data, metadata)
-        else:
-            method_name = '_render_' + self.engine
-            if hasattr(self, method_name):
-                renderer = getattr(self, method_name)
-                return renderer(data, metadata)
+        method_name = '_render_' + self.engine
+        if hasattr(self, method_name):
+            renderer = getattr(self, method_name)
+            return renderer(data, metadata, key=key)
         return False
 
-    def _render_json(self, data, indent=None):
+    def _render_json(self, data, metadata, key=False, indent=None):
         indent = None
         if self.pretty_print:
             indent = 4
@@ -138,7 +127,8 @@ class ExternalDataSerializer(models.Model):
     def render_json(self, data, indent=None):
         return json.dumps(data, indent=indent)
 
-    def _render_lxml_etree(self, items):
+    def _render_lxml_etree(self, data, metadata, key='items'):
+        items = data.get(key)
         self.ensure_one()
         if not isinstance(items, list):
             return False
@@ -178,7 +168,7 @@ class ExternalDataSerializer(models.Model):
                     element.append(child_elem)
         return element
 
-    def _render_qweb(self, data):
+    def _render_qweb(self, data, metadata, key=False):
         if self.qweb_template:
             qweb = self.env['ir.qweb']
             try:
@@ -190,8 +180,8 @@ class ExternalDataSerializer(models.Model):
         _logger.error(msg)
         return msg
 
-    def _render_xlsx(self, data, metadata):
-        items = data.get('items')
+    def _render_xlsx(self, data, metadata, key='items'):
+        items = data.get(key)
         if not isinstance(items, list):
             return False
 
