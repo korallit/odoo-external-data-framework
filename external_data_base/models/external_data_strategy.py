@@ -63,6 +63,7 @@ class ExternalDataStrategy(models.Model):
         domain="[('data_source_id', '=', data_source_id)]",
     )
     batch_size = fields.Integer("Batch size", default=10)
+    offset = fields.Integer("Page", help="offset", default=0)
     exposed = fields.Boolean("Exposed to REST")
     export_filename = fields.Char(
         "Export filename",
@@ -91,7 +92,15 @@ class ExternalDataStrategy(models.Model):
                 record.export_filename,
             ]
             if all(path_parts):
-                record.export_url = '/'.join(path_parts)
+                url = '/'.join(path_parts)
+                params = []
+                if record.batch_size:
+                    params.append("page_size=" + str(record.batch_size))
+                if record.offset:
+                    params.append("page=" + str(record.offset))
+                if params:
+                    url += "?" + '&'.join(params)
+                record.export_url = url
 
     def button_details(self):
         self.ensure_one()
