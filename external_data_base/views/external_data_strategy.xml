@@ -65,7 +65,7 @@
 			    <group>
 				<field name="export_filename"/>
 				<field name="offset"/>
-				<field name="export_url" widget="download_button" readonly="1"/>
+				<field name="export_url" widget="download_button" nolabel="1"/>
 			    </group>
 			</page>
 		    </notebook>
