@@ -79,7 +79,7 @@ class ExternalDataSerializer(models.Model):
     def _compute_parser_line_count(self):
         for record in self:
             record.parser_line_count = record.parser_line_ids.search_count([
-                ('serializer_id', '=', self.id)])
+                ('serializer_id', '=', record.id)])
 
     def list_parser_lines(self):
         self.ensure_one()
