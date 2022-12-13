@@ -61,6 +61,11 @@
 				</tree>
 			    </field>
 			</page>
+			<page string="Export" attrs="{'invisible': [('exposed', '=', False)]}">
+			    <field name="export_filename"/>
+			    <field name="offset"/>
+			    <field name="export_url" widget="download_button" readonly="1"/>
+			</page>
 		    </notebook>
 		</sheet>
 	    </form>

@@ -18,6 +18,12 @@
     # any module necessary for this one to work correctly
     'depends': ['base'],
 
+    "assets": {
+        "web.assets_backend": [
+            "/external_data_base/static/src/js/widget_download_button.js",
+        ]
+    },
+
     # always loaded
     'data': [
         'security/ir.model.access.csv',
