@@ -81,15 +81,15 @@ class ExternalDataStrategy(models.Model):
         for record in self:
             record.slug = slugify_one(record.name)
 
-    @api.depends('export_filename', 'data_source.slug', 'slug',
+    @api.depends('export_filename', 'data_source_id.slug', 'slug',
                  'batch_size', 'offset')
-    @api.onchange('export_filename', 'data_source.slug', 'slug',
+    @api.onchange('export_filename', 'data_source_id.slug', 'slug',
                   'batch_size', 'offset')
     def _compute_export_url(self):
         for record in self:
             path_parts = [
                 "external-data", "web",
-                record.data_source.slug,
+                record.data_source_id.slug,
                 record.slug, "items",
                 record.export_filename,
             ]
