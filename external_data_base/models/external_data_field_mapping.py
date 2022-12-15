@@ -63,7 +63,7 @@ class ExternalDataFieldMappingLine(models.Model):
         string="Foreign field",
         required=True,
         ondelete='restrict',
-        domain="[('foreign_type_id', '=', foreign_type_id)]",
+        domain=lambda r: r._get_field_id_domain('foreign_field_id'),
     )
     odoo_model = fields.Char(related='field_mapping_id.model_id.model')
     odoo_field_id = fields.Many2one(
@@ -71,7 +71,7 @@ class ExternalDataFieldMappingLine(models.Model):
         string="Odoo field",
         required=True,
         ondelete='cascade',
-        domain="[('model', '=', odoo_model)]",
+        domain=lambda r: r._get_field_id_domain('odoo_field_id'),
     )
     pre_post = fields.Selection(
         string="Pre/Post",
@@ -90,6 +90,16 @@ class ExternalDataFieldMappingLine(models.Model):
             src = "{}.{}".format(rec.foreign_type_id.name, rec.foreign_field_id.name)
             dst = "{}.{}".format(rec.odoo_field_id.model, rec.odoo_field_id.name)
             rec.name = "{} > {}".format(src, dst)
+
+    def _get_field_id_domain(self, field):
+        active_model = self.env.context.get('active_model')
+        active_id = self.env.context.get('active_id')
+        if active_model == 'external.data.field.mapping':
+            field_mapping = self.env[active_model].browse(active_id)
+            if field == 'odoo_field_id':
+                return [('model', '=', field_mapping.model_id.model)]
+            elif field == 'foreign_field_id':
+                return [('foreign_type_id', '=', field_mapping.foreign_type_id.id)]
 
 
 class ExternalDataFieldMapping(models.Model):
