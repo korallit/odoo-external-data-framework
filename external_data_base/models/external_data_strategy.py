@@ -71,7 +71,7 @@ class ExternalDataStrategy(models.Model):
     )
     export_url = fields.Char(
         string="Export URL",
-        comute='_compute_export_url',
+        compute='_compute_export_url',
         store=True,
     )
 
