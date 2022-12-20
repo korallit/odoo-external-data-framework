@@ -451,7 +451,10 @@ class ExternalDataParserLine(models.Model):
         exec_method_name = '_execute_' + self.engine
         if hasattr(self, exec_method_name):
             exec_method = getattr(self, exec_method_name)
-            return exec_method(data)
+            result = exec_method(data)
+            if isinstance(result, str) and self.extract_param == '_json':
+                return json.loads(result)
+            return result
         else:
             raise ValidationError("Engine is not supported yet")
 
@@ -483,8 +486,6 @@ class ExternalDataParserLine(models.Model):
             chunk = chunk.find(self.extract_param)
 
         if self.extract_method == 'text':
-            if self.extract_param == 'json':
-                return json.loads(chunk.text)
             return chunk.text
         elif self.extract_method == 'tag':
             return chunk.tag
