@@ -451,7 +451,7 @@ class ExternalDataParserLine(models.Model):
         exec_method_name = '_execute_' + self.engine
         if hasattr(self, exec_method_name):
             exec_method = getattr(self, exec_method_name)
-            exec_method(data)
+            return exec_method(data)
         else:
             raise ValidationError("Engine is not supported yet")
 
