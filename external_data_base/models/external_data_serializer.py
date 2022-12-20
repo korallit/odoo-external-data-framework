@@ -483,6 +483,8 @@ class ExternalDataParserLine(models.Model):
             chunk = chunk.find(self.extract_param)
 
         if self.extract_method == 'text':
+            if self.extract_param == 'json':
+                return json.loads(chunk.text)
             return chunk.text
         elif self.extract_method == 'tag':
             return chunk.tag
