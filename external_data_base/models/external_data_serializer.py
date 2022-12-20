@@ -565,7 +565,7 @@ class ExternalDataParserLine(models.Model):
         if self.extract_method == 'attr' and self.extract_param:
             return chunk.get(self.extract_param)
 
-        if self.extract_param:
+        if self.extract_param and self.extract_param[0] != '_':
             chunk = chunk.find(self.extract_param)
 
         if self.extract_method == 'text':
