@@ -542,7 +542,7 @@ class ExternalDataParserLine(models.Model):
                                recursive=recursive, start=start, end=end)
         elif self.path_type == 'css_find':
             if index:
-                chunk = data.select(self.path)[index]
+                return data.select(self.path)[index]
             else:
                 chunk = data.select_one(self.path)
         elif self.path_type == 'css_findall':
