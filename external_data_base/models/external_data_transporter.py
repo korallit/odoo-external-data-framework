@@ -14,7 +14,7 @@ _logger = logging.getLogger(__name__)
 
 class ExternalDataCredential(models.Model):
     _name = 'external.data.credential'
-    _description = "External Data Transporter"
+    _description = "External Data Credential"
 
     data_source_id = fields.Many2one(
         'external.data.source',
