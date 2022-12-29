@@ -16,11 +16,16 @@ class ExternalDataCredential(models.Model):
     _name = 'external.data.credential'
     _description = "External Data Transporter"
 
+    data_source_id = fields.Many2one(
+        'external.data.source',
+        required=True,
+    )
     name = fields.Char(required=True)
     key = fields.Char(required=True)
     value = fields.Char()
     document = fields.Text()
     file = fields.Binary()
+    is_secret = fields.Boolean()
     transporter_ids = fields.Many2many(
         'external.data.transporter',
         string="Transporters",
@@ -42,7 +47,7 @@ class ExternalDataTransporter(models.Model):
         ],
         required=True,
     )
-    auth_method = fields.Selection(
+    auth_method = fields.Selection(  # TODO: don't need this
         string="Auth method",
         selection=[
             ('sudo', "sudo"),
@@ -61,6 +66,15 @@ class ExternalDataTransporter(models.Model):
         'external.data.credential',
         string="Credentials",
     )
+    http_credential_ids_headers = fields.Many2many(
+        'external.data.credential',
+        string="Headers",
+    )
+    http_credential_ids_cookies = fields.Many2many(
+        'external.data.credential',
+        string="Cookies",
+    )
+    http_save_cookies = fields.Boolean("Save cookies")
     http_request_method = fields.Selection(
         string="Method",
         selection=[
@@ -84,28 +98,50 @@ class ExternalDataTransporter(models.Model):
         if not resource.exists():
             return False
 
-        if self.protocol == 'http':
-            return self._fetch_http(resource)
-        elif self.protocol == 'local_fs':
-            return self._fetch_local_fs(resource)
-        else:
-            # TODO: raise exception
+        method_name = '_fetch_' + self.protocol
+        try:
+            fetcher = getattr(self, method_name)
+            return fetcher(resource)
+        except (AttributeError, TypeError) as e:
+            _logger.error(e)
             return False
 
     def deliver(self, resource_id):
-        pass
+        self.ensure_one()
+        resource = self.env['external.data.resource'].browse(resource_id)
+        if not resource.exists():
+            return False
+
+        method_name = '_deliver_' + self.protocol
+        try:
+            fetcher = getattr(self, method_name)
+            return fetcher(resource)
+        except (AttributeError, TypeError) as e:
+            _logger.error(e)
+            return False
 
     def _fetch_http(self, resource):
+        return self._http_request(resource, 'pull')
+
+    def _deliver_http(self, resource):
+        return self._http_request(resource, 'push')
+
+    def _http_request(self, resource, direction):
         self.ensure_one()
         ses = Session()
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
         if res.status_code == 200:
+            if direction == 'pull' and self.http_save_cookies:
+                # TODO: save cookies
+                pass
             if self.content_type == 'binary':
                 return res.content
             elif self.content_type == 'text':
                 return res.text
+        else:
+            _logger.error("HTTP response code is " + res.status_code)
         return False
 
     def _fetch_local_fs(self, resource):
