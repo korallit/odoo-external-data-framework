@@ -34,12 +34,16 @@
 			    <field name="http_request_method"/>
 			    <field name="http_save_cookies"/>
 			    <field name="http_credential_ids_headers">
-				<field name="name"/>
-				<field name="key"/>
+				<tree>
+				    <field name="name"/>
+				    <field name="key"/>
+				</tree>
 			    </field>
 			    <field name="http_credential_ids_cookies">
-				<field name="name"/>
-				<field name="key"/>
+				<tree>
+				    <field name="name"/>
+				    <field name="key"/>
+				</tree>
 			    </field>
 			</page>
 		    </notebook>
