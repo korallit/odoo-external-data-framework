@@ -68,10 +68,12 @@ class ExternalDataTransporter(models.Model):
     )
     http_credential_ids_headers = fields.Many2many(
         'external.data.credential',
+        relation='external_data_credential_transporter_http_header_rel',
         string="Headers",
     )
     http_credential_ids_cookies = fields.Many2many(
         'external.data.credential',
+        relation='external_data_credential_transporter_http_cookie_rel',
         string="Cookies",
     )
     http_save_cookies = fields.Boolean("Save cookies")
