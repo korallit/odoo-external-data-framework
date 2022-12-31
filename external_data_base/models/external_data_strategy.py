@@ -85,7 +85,7 @@ class ExternalDataStrategy(models.Model):
         for record in self:
             path_parts = [
                 "external-data", "web",
-                record.data_source.slug,
+                record.data_source_id.slug,
                 record.slug, "items",
                 record.export_filename,
             ]

@@ -7,6 +7,8 @@ import logging
 import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
+SESSIONS = {}
+
 # Ignoring pyOpenSSL warnings
 warnings.simplefilter('ignore', category=CryptographyDeprecationWarning)
 _logger = logging.getLogger(__name__)
@@ -76,7 +78,6 @@ class ExternalDataTransporter(models.Model):
         relation='external_data_credential_transporter_http_cookie_rel',
         string="Cookies",
     )
-    http_save_cookies = fields.Boolean("Save cookies")
     http_request_method = fields.Selection(
         string="Method",
         selection=[
@@ -130,14 +131,14 @@ class ExternalDataTransporter(models.Model):
 
     def _http_request(self, resource, direction):
         self.ensure_one()
-        ses = Session()
+        ses = SESSIONS.get(self.id)
+        if not isinstance(ses, Session):
+            ses = Session()
+            SESSIONS.update({self.id: ses})
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
         if res.status_code == 200:
-            if direction == 'pull' and self.http_save_cookies:
-                # TODO: save cookies
-                pass
             if self.content_type == 'binary':
                 return res.content
             elif self.content_type == 'text':
