@@ -89,6 +89,8 @@ class ExternalDataStrategy(models.Model):
                 record.slug, "items",
                 record.export_filename,
             ]
+            if not all(path_parts):
+                continue
             record.export_url = '/'.join(path_parts)
 
     def button_details(self):
