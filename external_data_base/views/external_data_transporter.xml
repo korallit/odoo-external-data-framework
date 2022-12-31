@@ -33,7 +33,6 @@
 			      attrs="{'invisible': [('protocol', '!=', 'http')]}">
 			    <group>
 				<field name="http_request_method"/>
-				<field name="http_save_cookies"/>
 			    </group>
 			    <separator string="Headers"/>
 			    <field name="http_credential_ids_headers">
