@@ -2,6 +2,7 @@
 
 from requests import Request, Session
 from odoo import fields, models
+from odoo.exceptions import UserError
 from http.cookiejar import MozillaCookieJar
 import tempfile
 from os import path
@@ -138,12 +139,7 @@ class ExternalDataTransporter(models.Model):
 
     def _http_request(self, resource, direction):
         self.ensure_one()
-        ses = SESSIONS.get(self.id)
-        if not isinstance(ses, Session):
-            ses = Session()
-            SESSIONS.update({self.id: ses})
-            ses.cookies = MozillaCookieJar(self._http_get_cookiejar_path())
-
+        ses = self._http_create_session()
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
@@ -161,11 +157,21 @@ class ExternalDataTransporter(models.Model):
         tempdir = tempfile.tempdir or '/tmp'
         return path.join(tempdir, f'cookiejar-{self.id}.txt')
 
-    def http_cookiejar_load(self):
+    def _http_create_session(self):
         self.ensure_one()
         ses = SESSIONS.get(self.id)
-        if not isinstance(ses, Session) or not self.http_cookiejar:
+        if not isinstance(ses, Session):
+            ses = Session()
+            SESSIONS.update({self.id: ses})
+            ses.cookies = MozillaCookieJar(self._http_get_cookiejar_path())
+            _logger.info(f"HTTP session created for transporter ID {self.id}")
+        return ses
+
+    def http_cookiejar_load(self):
+        self.ensure_one()
+        if not self.http_cookiejar:
             return False
+        ses = self._http_create_session()
         with open(self._http_get_cookiejar_path(), 'wb') as cf:
             cf.write(self.http_cookiejar.raw)
         ses.cookies.load(ignore_expires=True)
@@ -174,7 +180,12 @@ class ExternalDataTransporter(models.Model):
         self.ensure_one()
         ses = SESSIONS.get(self.id)
         if not isinstance(ses, Session) or not self.http_cookiejar:
-            return False
+            msg = (
+                "No session created yet for transporter "
+                f"'{self.name}' (ID {self.id})"
+            )
+            raise UserError(msg)
+
         ses.cookies.save(ignore_expires=True)
         with open(self._http_get_cookiejar_path(), 'rb') as cf:
             self.http_cookiejar.raw = cf.read()
