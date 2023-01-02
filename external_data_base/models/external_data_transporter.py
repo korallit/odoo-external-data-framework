@@ -32,10 +32,6 @@ class ExternalDataCredential(models.Model):
     document = fields.Text()
     file = fields.Binary()
     is_secret = fields.Boolean()
-    transporter_ids = fields.Many2many(
-        'external.data.transporter',
-        string="Transporters",
-    )
 
 
 class ExternalDataTransporter(models.Model):

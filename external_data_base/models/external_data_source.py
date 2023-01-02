@@ -56,6 +56,11 @@ class ExternalDataSource(models.Model):
         inverse_name='data_source_id',
         string="Field mappings",
     )
+    credential_ids = fields.One2many(
+        'external.data.credential',
+        inverse_name='data_source_id',
+        string="Credentials",
+    )
     last_fetch = fields.Datetime("Last fetched")
     resource_ids = fields.One2many(
         'external.data.resource',

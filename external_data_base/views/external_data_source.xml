@@ -58,6 +58,14 @@
 				</tree>
 			    </field>
 			</page>
+			<page string="Credentials">
+			    <field name="credential_ids">
+				<tree>
+				    <field name="name"/>
+				    <field name="key"/>
+				</tree>
+			    </field>
+			</page>
 			<page string="Pull strategies">
 			    <field name="pull_strategy_ids">
 				<tree editable="bottom">
