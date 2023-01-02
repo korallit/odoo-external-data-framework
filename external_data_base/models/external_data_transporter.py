@@ -78,6 +78,14 @@ class ExternalDataTransporter(models.Model):
         relation='external_data_credential_transporter_http_cookie_rel',
         string="Cookies",
     )
+    http_cookiejar = fields.Many2one(
+        comodel_name='ir.attachment',
+        string="Cookiejar",
+        domain=[
+            ('res_model', '=', 'external.data.transporter'),
+            ('res_field', '=', 'http_cookiejar'),
+        ],
+    )
     http_request_method = fields.Selection(
         string="Method",
         selection=[

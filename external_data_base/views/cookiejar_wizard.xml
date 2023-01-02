@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="external_data_cookiejar_wizard_form" model="ir_ui_view">
+	<field name="name">Create cookiejar</field>
+	<field name="model">external.data.cookiejar.wizard</field>
+	<field name="arch" type="xml">
+	    <form>
+		<sheet>
+		    <group>
+			<field name="name"/>
+		    </group>
+		</sheet>
+		<footer id="button_box">
+		    <button string="close" special="cancel"/>
+		    <button string="create" type="object" name="button_submit"/>
+		</footer>
+	    </form>
+	</field>
+    </record>
+
+    <record model="ir.actions.act_window" id="cookiejar_wizard_action_form">
+	<field name="name">Launch cookiejar wizard</field>
+	<field name="res_model">external.data.cookiejar.wizard</field>
+	<field name="views" eval="[(ref('external_data_cookiejar_wizard_form', 'form'))]"/>
+	<field name="view_mode">form</field>
+	<field name="target">new</field>
+    </record>
+
+</odoo>

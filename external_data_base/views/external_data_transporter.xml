@@ -33,16 +33,12 @@
 			      attrs="{'invisible': [('protocol', '!=', 'http')]}">
 			    <group>
 				<field name="http_request_method"/>
+				<field name="http_cookiejar"/>
 			    </group>
+			    <button string="New cookiejar" type="action"
+				    name="external_data_base.cookiejar_wizard_action_form"/>
 			    <separator string="Headers"/>
 			    <field name="http_credential_ids_headers">
-				<tree>
-				    <field name="name"/>
-				    <field name="key"/>
-				</tree>
-			    </field>
-			    <separator string="Cookies"/>
-			    <field name="http_credential_ids_cookies">
 				<tree>
 				    <field name="name"/>
 				    <field name="key"/>
@@ -62,6 +58,7 @@
 	    <form>
 		<sheet>
 		    <group>
+			<field name="data_source_id"/>
 			<field name="name"/>
 			<field name="key"/>
 			<field name="is_secret"/>
