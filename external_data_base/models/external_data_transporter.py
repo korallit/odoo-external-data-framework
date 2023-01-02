@@ -170,7 +170,7 @@ class ExternalDataTransporter(models.Model):
         ses = self._http_create_session()
         with open(self._http_get_cookiejar_path(), 'w') as cf:
             cf.write(self.http_cookiejar.raw)
-        ses.cookies.load(ignore_expires=True)
+        ses.cookies.load(ignore_discard=True, ignore_expires=True)
 
     def http_cookiejar_save(self):
         self.ensure_one()
@@ -182,7 +182,7 @@ class ExternalDataTransporter(models.Model):
             )
             raise UserError(msg)
 
-        ses.cookies.save(ignore_expires=True)
+        ses.cookies.save(ignore_discard=True, ignore_expires=True)
         with open(self._http_get_cookiejar_path(), 'r') as cf:
             self.http_cookiejar.raw = cf.read()
 
