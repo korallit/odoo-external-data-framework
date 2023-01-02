@@ -21,9 +21,7 @@ class ExternalDataCookiejarWizard(models.TransientModel):
         self.ensure_one()
         att = self.env['ir.attachment'].create([{
             'name': self.name,
-            'res_model': 'external.data.transporter',
-            'res_field': 'http_cookiejar',
-            'mimetype': 'text/plain',
+            'type': 'binary',
+            'raw': "# Netscape HTTP Cookie File\n",
         }])
-        att.raw = "# Netscape HTTP Cookie File\n"
-        _logger.info(f"Cookiejar '{self.name}' created")
+        _logger.info(f"Cookiejar '{self.name}' created with ID {att.id}")

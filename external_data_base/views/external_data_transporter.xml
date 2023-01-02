@@ -35,8 +35,13 @@
 				<field name="http_request_method"/>
 				<field name="http_cookiejar"/>
 			    </group>
+			    <separator string="Cookiejar actions"/>
 			    <button string="New cookiejar" type="action"
 				    name="external_data_base.cookiejar_wizard_action_form"/>
+			    <button string="Load cookiejar" type="object"
+				    name="http_cookiejar_load"/>
+			    <button string="Save cookiejar" type="object"
+				    name="http_cookiejar_save"/>
 			    <separator string="Headers"/>
 			    <field name="http_credential_ids_headers">
 				<tree>

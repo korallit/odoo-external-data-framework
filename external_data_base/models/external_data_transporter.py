@@ -2,6 +2,9 @@
 
 from requests import Request, Session
 from odoo import fields, models
+from http.cookiejar import MozillaCookieJar
+import tempfile
+from os import path
 
 import logging
 import warnings
@@ -81,10 +84,6 @@ class ExternalDataTransporter(models.Model):
     http_cookiejar = fields.Many2one(
         comodel_name='ir.attachment',
         string="Cookiejar",
-        domain=[
-            ('res_model', '=', 'external.data.transporter'),
-            ('res_field', '=', 'http_cookiejar'),
-        ],
     )
     http_request_method = fields.Selection(
         string="Method",
@@ -143,6 +142,8 @@ class ExternalDataTransporter(models.Model):
         if not isinstance(ses, Session):
             ses = Session()
             SESSIONS.update({self.id: ses})
+            ses.cookies = MozillaCookieJar(self._http_get_cookiejar_path())
+
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
@@ -154,6 +155,29 @@ class ExternalDataTransporter(models.Model):
         else:
             _logger.error("HTTP response code is " + res.status_code)
         return False
+
+    def _http_get_cookiejar_path(self):
+        self.ensure_one()
+        tempdir = tempfile.tempdir or '/tmp'
+        return path.join(tempdir, f'cookiejar-{self.id}.txt')
+
+    def http_cookiejar_load(self):
+        self.ensure_one()
+        ses = SESSIONS.get(self.id)
+        if not isinstance(ses, Session) or not self.http_cookiejar:
+            return False
+        with open(self._http_get_cookiejar_path(), 'wb') as cf:
+            cf.write(self.http_cookiejar.raw)
+        ses.cookies.load(ignore_expires=True)
+
+    def http_cookiejar_save(self):
+        self.ensure_one()
+        ses = SESSIONS.get(self.id)
+        if not isinstance(ses, Session) or not self.http_cookiejar:
+            return False
+        ses.cookies.save(ignore_expires=True)
+        with open(self._http_get_cookiejar_path(), 'rb') as cf:
+            self.http_cookiejar.raw = cf.read()
 
     def _fetch_local_fs(self, resource):
         self.ensure_one()
