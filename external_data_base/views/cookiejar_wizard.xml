@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="external_data_cookiejar_wizard_form" model="ir_ui_view">
+    <record model="ir.ui.view" id="external_data_cookiejar_wizard_form">
 	<field name="name">Create cookiejar</field>
 	<field name="model">external.data.cookiejar.wizard</field>
 	<field name="arch" type="xml">
