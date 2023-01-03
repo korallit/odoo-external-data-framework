@@ -113,7 +113,7 @@ class ExternalDataController(Controller):
     def _serialize_result(self, metadata={}):
         renderer = self.strategy.serializer_id
         data = False
-        if renderer:
+        if renderer.engine:
             data = renderer.render(self.result, metadata, key="items")
         else:  # fallback to json
             data = renderer.render_json(self.result)
