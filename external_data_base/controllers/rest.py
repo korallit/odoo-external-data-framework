@@ -283,9 +283,7 @@ class ExternalDataController(Controller):
         ]
         renderer = self.strategy.serializer_id
         if renderer:
-            items_new = renderer.rearrange(items, metadata)
-            if items_new:
-                items = items_new
+            items = renderer.rearrange(items, metadata)
         self.result['items'] = items
         if self.params.get('include_metadata'):
             self.result['metadata'] = metadata

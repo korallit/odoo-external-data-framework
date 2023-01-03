@@ -30,11 +30,9 @@ class ExternalDataSerializer(models.Model):
             ('json', "JSON"),
             ('bs', "BeautifulSoup"),
             ('lxml_etree', "lxml.etree"),
-            ('csv', "CSV"),
             ('qweb', "Qweb"),
             ('xlsx', "xlsx"),
         ],
-        required=True,
         default='json',
     )
     pretty_print = fields.Boolean("Pretty print", default=True)
@@ -80,7 +78,7 @@ class ExternalDataSerializer(models.Model):
     def _compute_parser_line_count(self):
         for record in self:
             record.parser_line_count = record.parser_line_ids.search_count([
-                ('serializer_id', '=', self.id)])
+                ('serializer_id', '=', record.id)])
 
     def list_parser_lines(self):
         self.ensure_one()
@@ -110,26 +108,49 @@ class ExternalDataSerializer(models.Model):
         self.ensure_one()
         return self.parser_line_ids.objects(data)
 
+    def rearrange(self, items, metadata={}):
+        # TODO: iterate over rules
+        self.ensure_one()
+        if not isinstance(items, list):
+            _logger.warning(f"Items has to be a list, got this: {items}")
+            return False
+        expressions = self.jmespath_line_ids
+        if not expressions:
+            return items
+        expr_generators = expressions.get_jmespath_generators()
+        items_new = []
+        for vals in items:
+            for expr in expr_generators:
+                vals_new = expr({'vals': vals, 'metadata': metadata})
+                if not vals_new:
+                    continue
+                items_new.append(vals_new)
+        return items_new
+
+    def rearrange_one(self, vals, metadata={}):
+        self.ensure_one()
+        expressions = self.jmespath_line_ids
+        if not expressions:
+            return vals
+        expr_generators = expressions.get_jmespath_generators()
+        for expr in expr_generators:
+            vals_new = expr({'vals': vals, 'metadata': metadata})
+            if not vals_new:
+                # TODO: log error
+                return vals
+            return vals_new
+
     def render(self, data, metadata={}, key=False):
         self.ensure_one()
+        method_name = '_render_' + self.engine
+        if hasattr(self, method_name):
+            renderer = getattr(self, method_name)
+            return renderer(data, metadata, key=key)
+        return data
+
+    def _render_json(self, data, metadata, key='items', indent=None):
         if key:
-            chunk = data.get(key)
-
-        if self.engine == 'json':
-            return self._render_json(data)
-        elif self.engine == 'lxml_etree':
-            return self._render_lxml_etree(chunk)
-        elif self.engine == 'qweb':
-            return self._render_qweb(data, metadata)
-        else:
-            method_name = '_render_' + self.engine
-            if hasattr(self, method_name):
-                renderer = getattr(self, method_name)
-                return renderer(data, metadata)
-        return False
-
-    def _render_json(self, data, indent=None):
-        indent = None
+            data = data.get(key)
         if self.pretty_print:
             indent = 4
         return self.render_json(data, indent=indent)
@@ -138,7 +159,8 @@ class ExternalDataSerializer(models.Model):
     def render_json(self, data, indent=None):
         return json.dumps(data, indent=indent)
 
-    def _render_lxml_etree(self, items):
+    def _render_lxml_etree(self, data, metadata, key='items'):
+        items = data.get(key)
         self.ensure_one()
         if not isinstance(items, list):
             return False
@@ -178,7 +200,7 @@ class ExternalDataSerializer(models.Model):
                     element.append(child_elem)
         return element
 
-    def _render_qweb(self, data):
+    def _render_qweb(self, data, metadata, key=False):
         if self.qweb_template:
             qweb = self.env['ir.qweb']
             try:
@@ -190,8 +212,8 @@ class ExternalDataSerializer(models.Model):
         _logger.error(msg)
         return msg
 
-    def _render_xlsx(self, data, metadata):
-        items = data.get('items')
+    def _render_xlsx(self, data, metadata, key='items'):
+        items = data.get(key)
         if not isinstance(items, list):
             return False
 
@@ -213,25 +235,6 @@ class ExternalDataSerializer(models.Model):
         workbook.close()
         output.seek(0)
         return output
-
-    def rearrange(self, items, metadata={}):
-        # TODO: iterate over rules
-        self.ensure_one()
-        if not isinstance(items, list):
-            _logger.warning(f"Items has to be a list, got this: {items}")
-            return False
-        expressions = self.jmespath_line_ids
-        if not expressions:
-            return items
-        expr_generators = expressions.get_jmespath_generators()
-        items_new = []
-        for vals in items:
-            for expr in expr_generators:
-                vals_new = expr({'vals': vals, 'metadata': metadata})
-                if not vals_new:
-                    continue
-                items_new.append(vals_new)
-        return items_new
 
 
 class ExternalDataJMESPathLine(models.Model):
@@ -454,12 +457,17 @@ class ExternalDataParserLine(models.Model):
 
     def execute(self, data):
         self.ensure_one()
-        if self.engine == 'lxml_etree':
-            data_prep = self._prepare_lxml_etree(data)
-            return self._execute_lxml_etree(data_prep)
-        if self.engine == 'bs':
-            data_prep = self._prepare_bs(data)
-            return self._execute_bs(data_prep)
+
+        # preparing data, by running a model method
+        data = self.prepare(data, self.engine)
+
+        exec_method_name = '_execute_' + self.engine
+        if hasattr(self, exec_method_name):
+            exec_method = getattr(self, exec_method_name)
+            result = exec_method(data)
+            if isinstance(result, str) and self.extract_param == '_json':
+                return json.loads(result)
+            return result
         else:
             raise ValidationError("Engine is not supported yet")
 
@@ -547,7 +555,7 @@ class ExternalDataParserLine(models.Model):
                                recursive=recursive, start=start, end=end)
         elif self.path_type == 'css_find':
             if index:
-                chunk = data.select(self.path)[index]
+                return data.select(self.path)[index]
             else:
                 chunk = data.select_one(self.path)
         elif self.path_type == 'css_findall':
@@ -570,7 +578,7 @@ class ExternalDataParserLine(models.Model):
         if self.extract_method == 'attr' and self.extract_param:
             return chunk.get(self.extract_param)
 
-        if self.extract_param:
+        if self.extract_param and self.extract_param[0] != '_':
             chunk = chunk.find(self.extract_param)
 
         if self.extract_method == 'text':
@@ -591,10 +599,10 @@ class ExternalDataParserLine(models.Model):
 
     @api.model
     def prepare(self, data, engine):
-        if engine == 'lxml_etree':
-            return self._prepare_lxml_etree(data)
-        if engine == 'bs':
-            return self._prepare_bs(data)
+        prep_method_name = '_prepare_' + engine
+        if hasattr(self, prep_method_name):
+            prep_method = getattr(self, prep_method_name)
+            return prep_method(data)
         else:
             raise ValidationError("Engine is not supported yet")
 

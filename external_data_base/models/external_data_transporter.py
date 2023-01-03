@@ -113,7 +113,7 @@ class ExternalDataTransporter(models.Model):
             _logger.error(e)
             return False
 
-    def deliver(self, resource_id):
+    def deliver(self, resource_id, data):
         self.ensure_one()
         resource = self.env['external.data.resource'].browse(resource_id)
         if not resource.exists():
@@ -121,22 +121,26 @@ class ExternalDataTransporter(models.Model):
 
         method_name = '_deliver_' + self.protocol
         try:
-            fetcher = getattr(self, method_name)
-            return fetcher(resource)
+            deliverer = getattr(self, method_name)
+            return deliverer(resource, data)
         except (AttributeError, TypeError) as e:
             _logger.error(e)
             return False
 
     def _fetch_http(self, resource):
-        return self._http_request(resource, 'pull')
+        return self._http_request(resource)
 
-    def _deliver_http(self, resource):
-        return self._http_request(resource, 'push')
+    def _deliver_http(self, resource, data):
+        return self._http_request(resource)
 
-    def _http_request(self, resource, direction):
+    def _http_request(self, resource, data=None):
         self.ensure_one()
         ses = self._http_create_session()
-        req = Request(self.http_request_method, resource.url)
+        req = Request(
+            method=self.http_request_method,
+            url=resource.url,
+            data=data,
+        )
         req_prepped = ses.prepare_request(req)
         res = ses.send(req_prepped)
         if res.status_code == 200:
