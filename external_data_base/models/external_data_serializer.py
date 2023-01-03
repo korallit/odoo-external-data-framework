@@ -142,7 +142,7 @@ class ExternalDataSerializer(models.Model):
 
     def render(self, data, metadata={}, key=False):
         self.ensure_one()
-        method_name = '_render_' + self.engine
+        method_name = f'_render_{self.engine}'
         if hasattr(self, method_name):
             renderer = getattr(self, method_name)
             return renderer(data, metadata, key=key)
