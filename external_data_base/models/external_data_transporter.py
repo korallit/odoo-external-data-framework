@@ -172,7 +172,7 @@ class ExternalDataTransporter(models.Model):
         if not self.http_cookiejar:
             return False
         ses = self._http_create_session()
-        with open(self._http_get_cookiejar_path(), 'w') as cf:
+        with open(self._http_get_cookiejar_path(), 'wb') as cf:
             cf.write(self.http_cookiejar.raw)
         ses.cookies.load(ignore_discard=True, ignore_expires=True)
 
@@ -187,7 +187,7 @@ class ExternalDataTransporter(models.Model):
             raise UserError(msg)
 
         ses.cookies.save(ignore_discard=True, ignore_expires=True)
-        with open(self._http_get_cookiejar_path(), 'r') as cf:
+        with open(self._http_get_cookiejar_path(), 'rb') as cf:
             self.http_cookiejar.raw = cf.read()
 
     def _fetch_local_fs(self, resource):
