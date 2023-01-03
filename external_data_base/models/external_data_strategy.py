@@ -597,7 +597,7 @@ class ExternalDataStrategy(models.Model):
                 elif self.push_overflow == 'create':
                     # TODO: create by template and sequence
                     break
-            result = deliver(data, resource_id)
+            result = deliver(resource_id, data)
             # TODO: refresh resources, external objects from result
             i += 1
 
@@ -618,7 +618,7 @@ class ExternalDataStrategy(models.Model):
             if renderer:
                 data = renderer.rearrange(data, metadata)
                 data = renderer.render(data, metadata)
-            result = deliver(data, resource_id)
+            result = deliver(resource_id, data)
 
     def _gather_items(self, metadata, res_id=False, limit=None, offset=0,
                       prune_implicit=None):
