@@ -90,6 +90,7 @@ class ExternalDataTransporter(models.Model):
         ],
         default='GET',
     )
+    http_body_json = fields.Boolean("JSON payload")
     content_type = fields.Selection(
         string="Content type",
         selection=[
@@ -135,13 +136,26 @@ class ExternalDataTransporter(models.Model):
 
     def _http_request(self, resource, data=None):
         self.ensure_one()
+
+        # prepare request
         ses = self._http_create_session()
-        req = Request(
-            method=self.http_request_method,
-            url=resource.url,
-            data=data,
-        )
+        req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
+
+        # headers
+        headers = {
+            res.key: res.value
+            for res in self.http_credential_ids_headers if res.value
+        }
+        req_prepped.headers.update(headers)
+
+        # body
+        if self.http_body_json and isinstance(data, (dict, list)):
+            req_prepped.prepare_body(None, None, json=data)
+        else:
+            req_prepped.body = data
+
+        # send request
         res = ses.send(req_prepped)
         if res.status_code == 200:
             if self.content_type == 'binary':
