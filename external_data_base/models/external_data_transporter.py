@@ -132,7 +132,7 @@ class ExternalDataTransporter(models.Model):
         return self._http_request(resource)
 
     def _deliver_http(self, resource, data):
-        return self._http_request(resource)
+        return self._http_request(resource, data)
 
     def _http_request(self, resource, data=None):
         self.ensure_one()
@@ -163,7 +163,7 @@ class ExternalDataTransporter(models.Model):
             elif self.content_type == 'text':
                 return res.text
         else:
-            _logger.error("HTTP response code is " + res.status_code)
+            _logger.error(f"HTTP response code is {res.status_code}")
         return False
 
     def _http_get_cookiejar_path(self):
