@@ -3,79 +3,79 @@
 <odoo>
     <!-- Data source -->
     <record model="ir.actions.server" id="external_data_action_data_source_list">
-	<field name="name">Refresh Resource List</field>
-	<field name="model_id" ref="model_external_data_source"/>
-	<field name="binding_model_id" ref="model_external_data_source"/>
-	<field name="binding_view_types">form</field>
-	<field name="state">code</field>
-	<field name="code">
-	    record.list()
-	</field>
+        <field name="name">Refresh Resource List</field>
+        <field name="model_id" ref="model_external_data_source"/>
+        <field name="binding_model_id" ref="model_external_data_source"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+            record.list()
+        </field>
     </record>
 
     <record model="ir.actions.server" id="external_data_action_data_source_batch_pull">
-	<field name="name">Batch Pull</field>
-	<field name="model_id" ref="model_external_data_source"/>
-	<field name="binding_model_id" ref="model_external_data_source"/>
-	<field name="binding_view_types">form</field>
-	<field name="state">code</field>
-	<field name="code">record.batch_pull(sync=True, prune=False)</field>
+        <field name="name">Batch Pull</field>
+        <field name="model_id" ref="model_external_data_source"/>
+        <field name="binding_model_id" ref="model_external_data_source"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">record.batch_pull(sync=True, prune=False)</field>
     </record>
 
     <!-- Resource -->
     <record model="ir.actions.server" id="external_data_action_resource_pull">
-	<field name="name">Pull</field>
-	<field name="model_id" ref="model_external_data_resource"/>
-	<field name="binding_model_id" ref="model_external_data_resource"/>
-	<field name="binding_view_types">form</field>
-	<field name="state">code</field>
-	<field name="code">record.pull(sync=True, prune=False)</field>
+        <field name="name">Pull</field>
+        <field name="model_id" ref="model_external_data_resource"/>
+        <field name="binding_model_id" ref="model_external_data_resource"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">record.pull(sync=True, prune=False)</field>
     </record>
 
     <record model="ir.actions.server" id="external_data_action_resource_pull_multi">
-	<field name="name">Batch pull</field>
-	<field name="model_id" ref="model_external_data_resource"/>
-	<field name="binding_model_id" ref="model_external_data_resource"/>
-	<field name="binding_view_types">list</field>
-	<field name="state">code</field>
-	<field name="code">records.batch_pull(sync=True, prune=False)</field>
+        <field name="name">Batch pull</field>
+        <field name="model_id" ref="model_external_data_resource"/>
+        <field name="binding_model_id" ref="model_external_data_resource"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.batch_pull(sync=True, prune=False)</field>
     </record>
 
     <record model="ir.actions.server" id="external_data_action_resource_toggle_skip">
-	<field name="name">Toggle 'skip'</field>
-	<field name="model_id" ref="model_external_data_resource"/>
-	<field name="binding_model_id" ref="model_external_data_resource"/>
-	<field name="binding_view_types">list</field>
-	<field name="state">code</field>
-	<field name="code">records.toggle_skip()</field>
+        <field name="name">Toggle 'skip'</field>
+        <field name="model_id" ref="model_external_data_resource"/>
+        <field name="binding_model_id" ref="model_external_data_resource"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">records.toggle_skip()</field>
     </record>
 
     <!-- Strategy -->
     <record model="ir.actions.server" id="external_data_action_strategy_list">
-	<field name="name">List</field>
-	<field name="model_id" ref="model_external_data_strategy"/>
-	<field name="binding_model_id" ref="model_external_data_strategy"/>
-	<field name="binding_view_types">form</field>
-	<field name="state">code</field>
-	<field name="code">record.list()</field>
+        <field name="name">List</field>
+        <field name="model_id" ref="model_external_data_strategy"/>
+        <field name="binding_model_id" ref="model_external_data_strategy"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">record.list()</field>
     </record>
 
     <record model="ir.actions.server" id="external_data_action_strategy_push_one">
-	<field name="name">Push one-by-one</field>
-	<field name="model_id" ref="model_external_data_strategy"/>
-	<field name="binding_model_id" ref="model_external_data_strategy"/>
-	<field name="binding_view_types">form</field>
-	<field name="state">code</field>
-	<field name="code">record.push_one_by_one()</field>
+        <field name="name">Push one-by-one</field>
+        <field name="model_id" ref="model_external_data_strategy"/>
+        <field name="binding_model_id" ref="model_external_data_strategy"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">record.push_one_by_one()</field>
     </record>
 
     <!-- <record model="ir.actions.server" id="external_data_action_strategy_batch_pull"> -->
-    <!-- 	<field name="name">Batch pull</field> -->
-    <!-- 	<field name="model_id" ref="model_external_data_strategy"/> -->
-    <!-- 	<field name="binding_model_id" ref="model_external_data_strategy"/> -->
-    <!-- 	<field name="binding_view_types">form</field> -->
-    <!-- 	<field name="state">code</field> -->
-    <!-- 	<field name="code">record.batch_pull()</field> -->
+    <!--        <field name="name">Batch pull</field> -->
+    <!--        <field name="model_id" ref="model_external_data_strategy"/> -->
+    <!--        <field name="binding_model_id" ref="model_external_data_strategy"/> -->
+    <!--        <field name="binding_view_types">form</field> -->
+    <!--        <field name="state">code</field> -->
+    <!--        <field name="code">record.batch_pull()</field> -->
     <!-- </record> -->
 
 </odoo>
