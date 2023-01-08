@@ -2,10 +2,16 @@
 
 from requests import Request, Session
 from odoo import fields, models
+from odoo.exceptions import UserError
+from http.cookiejar import MozillaCookieJar
+import tempfile
+from os import path
 
 import logging
 import warnings
 from cryptography.utils import CryptographyDeprecationWarning
+
+SESSIONS = {}
 
 # Ignoring pyOpenSSL warnings
 warnings.simplefilter('ignore', category=CryptographyDeprecationWarning)
@@ -14,17 +20,18 @@ _logger = logging.getLogger(__name__)
 
 class ExternalDataCredential(models.Model):
     _name = 'external.data.credential'
-    _description = "External Data Transporter"
+    _description = "External Data Credential"
 
+    data_source_id = fields.Many2one(
+        'external.data.source',
+        required=True,
+    )
     name = fields.Char(required=True)
     key = fields.Char(required=True)
     value = fields.Char()
     document = fields.Text()
     file = fields.Binary()
-    transporter_ids = fields.Many2many(
-        'external.data.transporter',
-        string="Transporters",
-    )
+    is_secret = fields.Boolean()
 
 
 class ExternalDataTransporter(models.Model):
@@ -42,7 +49,7 @@ class ExternalDataTransporter(models.Model):
         ],
         required=True,
     )
-    auth_method = fields.Selection(
+    auth_method = fields.Selection(  # TODO: don't need this
         string="Auth method",
         selection=[
             ('sudo', "sudo"),
@@ -61,6 +68,20 @@ class ExternalDataTransporter(models.Model):
         'external.data.credential',
         string="Credentials",
     )
+    http_credential_ids_headers = fields.Many2many(
+        'external.data.credential',
+        relation='external_data_credential_transporter_http_header_rel',
+        string="Headers",
+    )
+    http_credential_ids_cookies = fields.Many2many(
+        'external.data.credential',
+        relation='external_data_credential_transporter_http_cookie_rel',
+        string="Cookies",
+    )
+    http_cookiejar = fields.Many2one(
+        comodel_name='ir.attachment',
+        string="Cookiejar",
+    )
     http_request_method = fields.Selection(
         string="Method",
         selection=[
@@ -69,6 +90,7 @@ class ExternalDataTransporter(models.Model):
         ],
         default='GET',
     )
+    http_body_json = fields.Boolean("JSON payload")
     content_type = fields.Selection(
         string="Content type",
         selection=[
@@ -84,29 +106,103 @@ class ExternalDataTransporter(models.Model):
         if not resource.exists():
             return False
 
-        if self.protocol == 'http':
-            return self._fetch_http(resource)
-        elif self.protocol == 'local_fs':
-            return self._fetch_local_fs(resource)
-        else:
-            # TODO: raise exception
+        method_name = '_fetch_' + self.protocol
+        try:
+            fetcher = getattr(self, method_name)
+            return fetcher(resource)
+        except (AttributeError, TypeError) as e:
+            _logger.error(e)
             return False
 
-    def deliver(self, resource_id):
-        pass
+    def deliver(self, resource_id, data):
+        self.ensure_one()
+        resource = self.env['external.data.resource'].browse(resource_id)
+        if not resource.exists():
+            return False
+
+        method_name = '_deliver_' + self.protocol
+        try:
+            deliverer = getattr(self, method_name)
+            return deliverer(resource, data)
+        except (AttributeError, TypeError) as e:
+            _logger.error(e)
+            return False
 
     def _fetch_http(self, resource):
+        return self._http_request(resource)
+
+    def _deliver_http(self, resource, data):
+        return self._http_request(resource, data)
+
+    def _http_request(self, resource, data=None):
         self.ensure_one()
-        ses = Session()
+
+        # prepare request
+        ses = self._http_create_session()
         req = Request(self.http_request_method, resource.url)
         req_prepped = ses.prepare_request(req)
+
+        # headers
+        headers = {
+            res.key: res.value
+            for res in self.http_credential_ids_headers if res.value
+        }
+        req_prepped.headers.update(headers)
+
+        # body
+        if self.http_body_json and isinstance(data, (dict, list)):
+            req_prepped.prepare_body(None, None, json=data)
+        else:
+            req_prepped.body = data
+
+        # send request
         res = ses.send(req_prepped)
         if res.status_code == 200:
             if self.content_type == 'binary':
                 return res.content
             elif self.content_type == 'text':
                 return res.text
+        else:
+            _logger.error(f"HTTP response code is {res.status_code}")
         return False
+
+    def _http_get_cookiejar_path(self):
+        self.ensure_one()
+        tempdir = tempfile.tempdir or '/tmp'
+        return path.join(tempdir, f'cookiejar-{self.id}.txt')
+
+    def _http_create_session(self):
+        self.ensure_one()
+        ses = SESSIONS.get(self.id)
+        if not isinstance(ses, Session):
+            ses = Session()
+            SESSIONS.update({self.id: ses})
+            ses.cookies = MozillaCookieJar(self._http_get_cookiejar_path())
+            _logger.info(f"HTTP session created for transporter ID {self.id}")
+        return ses
+
+    def http_cookiejar_load(self):
+        self.ensure_one()
+        if not self.http_cookiejar:
+            return False
+        ses = self._http_create_session()
+        with open(self._http_get_cookiejar_path(), 'wb') as cf:
+            cf.write(self.http_cookiejar.raw)
+        ses.cookies.load(ignore_discard=True, ignore_expires=True)
+
+    def http_cookiejar_save(self):
+        self.ensure_one()
+        ses = SESSIONS.get(self.id)
+        if not isinstance(ses, Session) or not self.http_cookiejar:
+            msg = (
+                "No session created yet for transporter "
+                f"'{self.name}' (ID {self.id})"
+            )
+            raise UserError(msg)
+
+        ses.cookies.save(ignore_discard=True, ignore_expires=True)
+        with open(self._http_get_cookiejar_path(), 'rb') as cf:
+            self.http_cookiejar.raw = cf.read()
 
     def _fetch_local_fs(self, resource):
         self.ensure_one()

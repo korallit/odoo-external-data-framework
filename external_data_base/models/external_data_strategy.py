@@ -64,6 +64,16 @@ class ExternalDataStrategy(models.Model):
     )
     batch_size = fields.Integer("Batch size", default=10)
     offset = fields.Integer("Page", help="offset", default=0)
+    push_overflow = fields.Selection(
+        string="Push overflow",
+        help="What to do if more item then resource",
+        selection=[
+            ('stop', "stop"),
+            ('restart', "restart"),
+            ('create', "create new by template"),
+        ],
+        default='stop',
+    )
     exposed = fields.Boolean("Exposed to REST")
     export_filename = fields.Char(
         "Export filename",
@@ -573,22 +583,58 @@ class ExternalDataStrategy(models.Model):
         if debug:
             return debug_data
 
-    def push(self, field_mapping_id=False):
+    def push_one_by_one(self, field_mapping_id=False):
         self.ensure_one()
         if self.operation != 'push':
             raise UserError(f"Wrong operation type for push: {self.operation}")
 
-        # TODO: paginated resource
+        resource_ids = self.resource_ids.ids
+        renderer = self.serializer_id
+        deliver = self.transporter_id.deliver
         metadata = {}
-        for vals in self._gather_items(metadata=metadata):
-            data = self.serializer_id.serialize(vals)
-            result = self.transporter_id.deliver(data)
+        i = 0
+        for data in self._gather_items(metadata):
+            if renderer:
+                data = renderer.rearrange_one(data, metadata)
+                data = renderer.render(data, metadata)
+            try:
+                resource_id = resource_ids[i]
+            except IndexError:
+                if self.push_overflow == 'stop':
+                    break
+                elif self.push_overflow == 'restart':
+                    i = 0
+                    resource_id = resource_ids[i]
+                elif self.push_overflow == 'create':
+                    # TODO: create by template and sequence
+                    break
+            result = deliver(resource_id, data)
             # TODO: refresh resources, external objects from result
+            i += 1
+
+    def push_batch(self):
+        self.ensure_one()
+        if self.operation != 'push':
+            raise UserError(f"Wrong operation type for push: {self.operation}")
+        resource_ids = self.resource_ids.ids  # TODO: filter
+        renderer = self.serializer_id
+        deliver = self.transporter_id.deliver
+        metadata = {}
+        i = 0
+        for i, resource_id in enumerate(resource_ids):
+            data = [
+                vals for vals in
+                self._gather_items(metadata, limit=self.batch_size, offset=1)
+            ]
+            if renderer:
+                data = renderer.rearrange(data, metadata)
+                data = renderer.render(data, metadata)
+            result = deliver(resource_id, data)
 
     def _gather_items(self, metadata, res_id=False, limit=None, offset=0,
                       prune_implicit=None):
         self.ensure_one()
-        mapping = self.field_mapping_ids[0]
+        mapping = self.field_mapping_ids[0]  # TODO: select mapping
 
         # get recordset
         domain_str = mapping.filter_domain

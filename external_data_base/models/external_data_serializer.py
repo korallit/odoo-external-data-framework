@@ -33,7 +33,6 @@ class ExternalDataSerializer(models.Model):
             ('qweb', "Qweb"),
             ('xlsx', "xlsx"),
         ],
-        required=True,
         default='json',
     )
     pretty_print = fields.Boolean("Pretty print", default=True)
@@ -128,16 +127,30 @@ class ExternalDataSerializer(models.Model):
                 items_new.append(vals_new)
         return items_new
 
+    def rearrange_one(self, vals, metadata={}):
+        self.ensure_one()
+        expressions = self.jmespath_line_ids
+        if not expressions:
+            return vals
+        expr_generators = expressions.get_jmespath_generators()
+        for expr in expr_generators:
+            vals_new = expr({'vals': vals, 'metadata': metadata})
+            if not vals_new:
+                # TODO: log error
+                return vals
+            return vals_new
+
     def render(self, data, metadata={}, key=False):
         self.ensure_one()
-        method_name = '_render_' + self.engine
+        method_name = f'_render_{self.engine}'
         if hasattr(self, method_name):
             renderer = getattr(self, method_name)
             return renderer(data, metadata, key=key)
-        return False
+        return data
 
-    def _render_json(self, data, metadata, key=False, indent=None):
-        indent = None
+    def _render_json(self, data, metadata, key='items', indent=None):
+        if key:
+            data = data.get(key)
         if self.pretty_print:
             indent = 4
         return self.render_json(data, indent=indent)
