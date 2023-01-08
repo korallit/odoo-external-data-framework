@@ -153,7 +153,7 @@ class ExternalDataTransporter(models.Model):
         if self.http_body_json and isinstance(data, (dict, list)):
             req_prepped.prepare_body(None, None, json=data)
         else:
-            req_prepped.body = data
+            req_prepped.prepare_body(data, None)
 
         # send request
         res = ses.send(req_prepped)
