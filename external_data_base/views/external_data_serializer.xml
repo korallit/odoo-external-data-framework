@@ -2,172 +2,172 @@
 <odoo>
     <!-- Views -->
     <record id="external_data_serializer_list_view" model="ir.ui.view">
-	<field name="name">External Data serializers</field>
-	<field name="model">external.data.serializer</field>
-	<field name="arch" type="xml">
-	    <tree>
-		<field name="name"/>
-		<field name="engine"/>
-		<field name="packaging"/>
-	    </tree>
-	</field>
+        <field name="name">External Data serializers</field>
+        <field name="model">external.data.serializer</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="engine"/>
+                <field name="packaging"/>
+            </tree>
+        </field>
     </record>
     
     <record id="external_data_serializer_form_view" model="ir.ui.view">
-	<field name="name">External Data Serializer</field>
-	<field name="model">external.data.serializer</field>
-	<field name="arch" type="xml">
-	    <form>
-		<sheet>
-		    <div class="oe_button_box" name="button_box">
-			<button class="oe_stat_button"
-				type="object"
-				name="list_parser_lines"
-				icon="fa-gears">
-			    <field name="parser_line_count" widget="statinfo"/>
-			</button>
-		    </div>
-		    <group>
-			<field name="name"/>
-			<field name="engine"/>
-			<field name="packaging"/>
-			<field name="pretty_print"
-			       attrs="{'invisible': [('engine', 'not in', ['json', 'lxml_etree'])]}"/>
-			<field name="lxml_root"
-			       attrs="{'invisible': [('engine', 'not in', ['lxml_etree'])]}"/>
-			<field name="qweb_template"
-			       attrs="{'invisible': [('engine', 'not in', ['qweb'])]}"/>
-		    </group>
-		    <notebook>
-			<page string="Parser directives">
-			    <field name="parser_line_ids">
-				<tree editable="bottom">
-				    <field name="sequence" widget="handle"/>
-				    <field name="engine" invisible="1"/>
-				    <field name="parent_id"/>
-				    <field name="foreign_type_id"/>
-				    <field name="foreign_field_id"/>
-				    <field name="path_type"/>
-				    <field name="path"/>
-				    <field name="extract_method"/>
-				    <field name="extract_param"/>
-				    <field name="active"/>
-				</tree>
-			    </field>
-			</page>
-			<page string="JMESPath expressions">
-			    <field name="jmespath_line_ids">
-				<tree>
-				    <field name="sequence" widget="handle"/>
-				    <field name="name"/>
-				    <field name="update"/>
-				    <field name="bypass"/>
-				</tree>
-			    </field>
-			</page>
-		    </notebook>
-		</sheet>
-	    </form>
-	</field>
+        <field name="name">External Data Serializer</field>
+        <field name="model">external.data.serializer</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button"
+                                type="object"
+                                name="list_parser_lines"
+                                icon="fa-gears">
+                            <field name="parser_line_count" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <group>
+                        <field name="name"/>
+                        <field name="engine"/>
+                        <field name="packaging"/>
+                        <field name="pretty_print"
+                               attrs="{'invisible': [('engine', 'not in', ['json', 'lxml_etree'])]}"/>
+                        <field name="lxml_root"
+                               attrs="{'invisible': [('engine', 'not in', ['lxml_etree'])]}"/>
+                        <field name="qweb_template"
+                               attrs="{'invisible': [('engine', 'not in', ['qweb'])]}"/>
+                    </group>
+                    <notebook>
+                        <page string="Parser directives">
+                            <field name="parser_line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="engine" invisible="1"/>
+                                    <field name="parent_id"/>
+                                    <field name="foreign_type_id"/>
+                                    <field name="foreign_field_id"/>
+                                    <field name="path_type"/>
+                                    <field name="path"/>
+                                    <field name="extract_method"/>
+                                    <field name="extract_param"/>
+                                    <field name="active"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="JMESPath expressions">
+                            <field name="jmespath_line_ids">
+                                <tree>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="update"/>
+                                    <field name="bypass"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
     </record>
     
     <record id="external_data_jmespath_line_form_view" model="ir.ui.view">
-	<field name="name">External Data JMESPath Expression</field>
-	<field name="model">external.data.jmespath.line</field>
-	<field name="arch" type="xml">
-	    <form>
-		<sheet>
-		    <group col="4">
-			<field name="name"/>
-			<field name="update"/>
-			<field name="bypass"/>
-			<field name="jmespath_expr" nolabel="1" colspan="4"
-			       style="font-family: monospace;" class="bg-dark text-light px-2"/>
-		    </group>
-		</sheet>
-	    </form>
-	</field>
+        <field name="name">External Data JMESPath Expression</field>
+        <field name="model">external.data.jmespath.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group col="4">
+                        <field name="name"/>
+                        <field name="update"/>
+                        <field name="bypass"/>
+                        <field name="jmespath_expr" nolabel="1" colspan="4"
+                               style="font-family: monospace;" class="bg-dark text-light px-2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
     </record>
 
     <record id="external_data_parser_line_list_view" model="ir.ui.view">
-	<field name="name">External Data Parser Directives</field>
-	<field name="model">external.data.parser.line</field>
-	<field name="arch" type="xml">
-	    <tree>
-		<field name="sequence" widget="handle"/>
-		<field name="engine"/>
-		<field name="parent_id"/>
-		<field name="foreign_type_id"/>
-		<field name="foreign_field_id"/>
-		<field name="path_type"/>
-		<field name="path"/>
-		<field name="extract_method"/>
-		<field name="extract_param"/>
-		<field name="active"/>
-	    </tree>
-	</field>
+        <field name="name">External Data Parser Directives</field>
+        <field name="model">external.data.parser.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="engine"/>
+                <field name="parent_id"/>
+                <field name="foreign_type_id"/>
+                <field name="foreign_field_id"/>
+                <field name="path_type"/>
+                <field name="path"/>
+                <field name="extract_method"/>
+                <field name="extract_param"/>
+                <field name="active"/>
+            </tree>
+        </field>
     </record>
 
     <record id="external_data_parser_line_form_view" model="ir.ui.view">
-	<field name="name">External Data Parser Directive</field>
-	<field name="model">external.data.parser.line</field>
-	<field name="arch" type="xml">
-	    <form>
-		<sheet>
-		    <group>
-			<field name="name"/>
-			<field name="active"/>
-			<field name="serializer_id"/>
-			<field name="engine"/>
-			<field name="sequence"/>
-			<field name="parent_id"/>
-		    </group>
-		    <group>
-			<field name="foreign_type_id"/>
-			<field name="foreign_field_id"/>
-		    </group>
-		    <group>
-			<field name="path_type"/>
-			<field name="path"/>
-			<field name="extract_method"/>
-			<field name="extract_param"/>
-		    </group>
-		    <separator string="Children"/>
-		    <field name="child_ids">
-			<tree editable="bottom">
-			    <field name="sequence" widget="handle"/>
-			    <field name="engine" invisible="1"/>
-			    <field name="parent_id"/>
-			    <field name="foreign_type_id"/>
-			    <field name="foreign_field_id"/>
-			    <field name="path_type"/>
-			    <field name="path"/>
-			    <field name="extract_method"/>
-			    <field name="extract_param"/>
-			    <field name="active"/>
-			</tree>
-		    </field>
-		</sheet>
-	    </form>
-	</field>
+        <field name="name">External Data Parser Directive</field>
+        <field name="model">external.data.parser.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="active"/>
+                        <field name="serializer_id"/>
+                        <field name="engine"/>
+                        <field name="sequence"/>
+                        <field name="parent_id"/>
+                    </group>
+                    <group>
+                        <field name="foreign_type_id"/>
+                        <field name="foreign_field_id"/>
+                    </group>
+                    <group>
+                        <field name="path_type"/>
+                        <field name="path"/>
+                        <field name="extract_method"/>
+                        <field name="extract_param"/>
+                    </group>
+                    <separator string="Children"/>
+                    <field name="child_ids">
+                        <tree editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="engine" invisible="1"/>
+                            <field name="parent_id"/>
+                            <field name="foreign_type_id"/>
+                            <field name="foreign_field_id"/>
+                            <field name="path_type"/>
+                            <field name="path"/>
+                            <field name="extract_method"/>
+                            <field name="extract_param"/>
+                            <field name="active"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
     </record>
 
     <!-- Window actions -->
     <record id="external_data_jmespath_line_action_window" model="ir.actions.act_window">
-	<field name="name">External Data JMESPath Expression</field>
-	<field name="res_model">external.data.jmespath.line</field>
-	<field name="view_mode">tree,form</field>
+        <field name="name">External Data JMESPath Expression</field>
+        <field name="res_model">external.data.jmespath.line</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
     <record id="external_data_serializer_action_window" model="ir.actions.act_window">
-	<field name="name">External Data Serializer</field>
-	<field name="res_model">external.data.serializer</field>
+        <field name="name">External Data Serializer</field>
+        <field name="res_model">external.data.serializer</field>
     </record>
 
     <record id="external_data_parser_line_action_window" model="ir.actions.act_window">
-	<field name="name">External Data Parser Directives</field>
-	<field name="res_model">external.data.parser.line</field>
-	<field name="view_mode">tree,form</field>
+        <field name="name">External Data Parser Directives</field>
+        <field name="res_model">external.data.parser.line</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
 </odoo>
