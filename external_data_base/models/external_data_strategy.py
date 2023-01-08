@@ -63,6 +63,7 @@ class ExternalDataStrategy(models.Model):
         domain="[('data_source_id', '=', data_source_id)]",
     )
     batch_size = fields.Integer("Batch size", default=10)
+    offset = fields.Integer("Page", help="offset", default=0)
     push_overflow = fields.Selection(
         string="Push overflow",
         help="What to do if more item then resource",
@@ -80,7 +81,8 @@ class ExternalDataStrategy(models.Model):
     )
     export_url = fields.Char(
         string="Export URL",
-        comute='_compute_export_url',
+        compute='_compute_export_url',
+        store=True,
     )
 
     @api.depends('name')
@@ -89,8 +91,10 @@ class ExternalDataStrategy(models.Model):
         for record in self:
             record.slug = slugify_one(record.name)
 
-    @api.depends('export_filename', 'slug')
-    @api.onchange('export_filename', 'slug')
+    @api.depends('export_filename', 'data_source_id.slug', 'slug',
+                 'batch_size', 'offset')
+    @api.onchange('export_filename', 'data_source_id.slug', 'slug',
+                  'batch_size', 'offset')
     def _compute_export_url(self):
         for record in self:
             path_parts = [
@@ -99,9 +103,16 @@ class ExternalDataStrategy(models.Model):
                 record.slug, "items",
                 record.export_filename,
             ]
-            if not all(path_parts):
-                continue
-            record.export_url = '/'.join(path_parts)
+            if all(path_parts):
+                url = '/'.join(path_parts)
+                params = []
+                if record.batch_size:
+                    params.append("page_size=" + str(record.batch_size))
+                if record.offset:
+                    params.append("page=" + str(record.offset))
+                if params:
+                    url += "?" + '&'.join(params)
+                record.export_url = url
 
     def button_details(self):
         self.ensure_one()

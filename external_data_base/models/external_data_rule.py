@@ -266,6 +266,19 @@ class ExternalDataRule(models.Model):
                 result = rule._fetch_binary(value, rule.fetch_binary_encode)
             elif rule.operation == 'message_post':
                 rule._message_post(value, vals)
+            elif isinstance(rule.operation, str):
+                # handling operations defined in a subclass
+                method_name = '_apply_' + rule.operation
+                if hasattr(rule, method_name):
+                    operation_method = getattr(rule, method_name)
+                    try:
+                        result = operation_method(value, vals, metadata.copy())
+                    except TypeError as e:
+                        msg = str(e) + (
+                            f" - rule (ID: {rule.id}, name: {rule.name}); "
+                            f"operation '{rule.operation}'"
+                        )
+                        _logger.error(msg)
 
             if result is None and rule.operation != 'include':
                 continue
