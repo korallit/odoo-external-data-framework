@@ -42,6 +42,7 @@ class ExternalDataTransporter(models.Model):
     protocol = fields.Selection(
         selection=[
             ('local_fs', 'local filesystem'),
+            ('attachment', "Odoo attachment"),
             ('http', "HTTP"),
             ('ftp', "FTP"),
             ('s3', "S3"),
@@ -127,6 +128,10 @@ class ExternalDataTransporter(models.Model):
         except (AttributeError, TypeError) as e:
             _logger.error(e)
             return False
+
+    def _fetch_attachment(self, resource):
+        if resource.attachment:
+            return resource.attachment.raw
 
     def _fetch_http(self, resource):
         return self._http_request(resource)

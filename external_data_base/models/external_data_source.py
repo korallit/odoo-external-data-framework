@@ -158,6 +158,10 @@ class ExternalDataResource(models.Model):
         string="Related objects",
         inverse_name='resource_id',
     )
+    attachment = fields.Many2one(
+        comodel_name='ir.attachment',
+        string="Attachment",
+    )
     # TODO: Language
 
     def toggle_skip(self):

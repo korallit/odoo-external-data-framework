@@ -31,6 +31,7 @@
 		    <group>
 			<field name="name"/>
 			<field name="url" widget="url"/>
+			<field name="attachment"/>
 			<field name="data_source_id"/>
 			<field name="priority"/>
 			<field name="skip"/>
