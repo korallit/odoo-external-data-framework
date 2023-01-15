@@ -612,7 +612,7 @@ class ExternalDataParserLine(models.Model):
     @api.model
     def _prepare_json(self, data):
         if isinstance(data, bytes):
-            return json.load(data)
+            return json.loads(data)
         else:
             return data
 
