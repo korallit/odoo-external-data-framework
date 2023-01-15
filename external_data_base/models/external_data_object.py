@@ -282,8 +282,7 @@ class ExternalDataObject(models.Model):
 
     @api.model
     def _sanitize_binary(self, model, key, value, vals):
-        model_dict = model.__class__.__dict__
-        field_classname = model_dict[key].__class__.__name__
+        field_classname = model._fields[key].__class__.__name__
         if field_classname == 'Image':
             if isinstance(value, str) or isinstance(value, bytes):
                 try:

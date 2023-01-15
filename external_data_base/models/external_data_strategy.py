@@ -205,7 +205,7 @@ class ExternalDataStrategy(models.Model):
         # extract & parse
         data_source = self.data_source_id
         parser = self.serializer_id
-        processed_data = parser.extraxt(raw_data)
+        processed_data = parser.extract(raw_data)
 
         metadata = {  # TODO: could it be the context?
             'operation': self.operation,

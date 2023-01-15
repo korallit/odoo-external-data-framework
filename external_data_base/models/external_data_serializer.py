@@ -96,7 +96,7 @@ class ExternalDataSerializer(models.Model):
     def decrypt(self, data):
         return data
 
-    def extraxt(self, data):
+    def extract(self, data):
         self.ensure_one()
         # TODO: check if data is bytes
         if self.packaging == 'gzip':
@@ -471,6 +471,9 @@ class ExternalDataParserLine(models.Model):
         else:
             raise ValidationError("Engine is not supported yet")
 
+    def _execute_json(self, data):
+        return jmespath.search(self.path, data)
+
     def _execute_lxml_etree(self, data):
         if data is None:
             return None
@@ -605,6 +608,13 @@ class ExternalDataParserLine(models.Model):
             return prep_method(data)
         else:
             raise ValidationError("Engine is not supported yet")
+
+    @api.model
+    def _prepare_json(self, data):
+        if isinstance(data, bytes):
+            return json.load(data)
+        else:
+            return data
 
     @api.model
     def _prepare_lxml_etree(self, data):

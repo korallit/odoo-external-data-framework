@@ -11,6 +11,7 @@ from odoo.exceptions import ValidationError
 
 # may be used in user input
 from datetime import datetime
+import html
 
 from cryptography.utils import CryptographyDeprecationWarning
 import warnings
