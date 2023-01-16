@@ -472,7 +472,7 @@ class ExternalDataParserLine(models.Model):
             raise ValidationError("Engine is not supported yet")
 
     def _execute_json(self, data):
-        new_data = jmespath.search(self.path, data)
+        new_data = jmespath.search(self.path, data, options=jmespath_options)
         if isinstance(new_data, list) and self.path_type == 'findall':
             return (d for d in new_data)
         return new_data
