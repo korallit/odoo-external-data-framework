@@ -96,9 +96,9 @@
 			</page>
 			<page string="Test data">
 			    <separator string="data"/>
-			    <field name="test_data" widget="ace" options="{'mode': 'js'}"/>
+			    <field name="test_data" widget="ace"/>
 			    <separator string="metadata"/>
-			    <field name="test_metadata" widget="ace" options="{'mode': 'js'}"/>
+			    <field name="test_metadata" widget="ace"/>
 			</page>
 		    </notebook>
 		</sheet>
