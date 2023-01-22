@@ -49,38 +49,38 @@
 				<field name="drop_delete"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'replace')]}">
-				<field name="sub_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
-				<field name="sub_repl" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="sub_pattern" style="font-family: monospace;"/>
+				<field name="sub_repl" style="font-family: monospace;"/>
 				<field name="sub_count"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'hashtable')]}">
-				<field name="hashtable" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="hashtable" widget="ace" options="{'mode': 'python'}"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'parse_time')]}">
-				<field name="parse_time_pattern" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="parse_time_pattern" style="font-family: monospace;"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'lambda')]}">
 				<field name="lambda_str"
-				       style="font-family: monospace;" class="bg-dark text-light"/>
+				       widget="ace" options="{'mode': 'python'}"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'eval')]}">
 				<field name="eval_str"
-				       style="font-family: monospace;" class="bg-dark text-light"/>
+				       widget="ace" options="{'mode': 'python'}"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'orm_ref')]}">
 				<field name="orm_ref"
-				       style="font-family: monospace;" class="bg-dark text-light"/>
+				       style="font-family: monospace;"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'orm_expr')]}">
 				<field name="orm_model_id"/>
 				<field name="orm_model_model" invisible="1"/>
 				<field name="orm_domain_tmplt" widget="domain"
 				       options="{'model': 'orm_model_model', 'in_dialog': True}"/>
-				<field name="orm_domain" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="orm_domain" style="font-family: monospace;"/>
 				<field name="orm_limit"/>
-				<field name="orm_filter" style="font-family: monospace;" class="bg-dark text-light"/>
-				<field name="orm_map" style="font-family: monospace;" class="bg-dark text-light"/>
-				<field name="orm_field" style="font-family: monospace;" class="bg-dark text-light"/>
+				<field name="orm_filter" style="font-family: monospace;"/>
+				<field name="orm_map" style="font-family: monospace;"/>
+				<field name="orm_field" style="font-family: monospace;"/>
 			    </group>
 			    <group attrs="{'invisible': [('operation', '!=', 'object_link')]}">
 				<field name="obj_source_id"/>
@@ -100,7 +100,7 @@
 				<field name="condition_negate"/>
 				<field name="condition_operator"/>
 			    </group>
-			    <field name="condition" nolabel="1" style="font-family: monospace;" class="bg-dark text-light"/>
+			    <field name="condition" nolabel="1" widget="ace" options="{'mode': 'python'}"/>
 			</page>
 		    </notebook>
 		</sheet>

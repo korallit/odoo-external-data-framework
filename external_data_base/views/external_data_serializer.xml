@@ -82,7 +82,7 @@
                         <field name="update"/>
                         <field name="bypass"/>
                         <field name="jmespath_expr" nolabel="1" colspan="4"
-                               style="font-family: monospace;" class="bg-dark text-light px-2"/>
+                               widget="ace"/>
                     </group>
                 </sheet>
             </form>
