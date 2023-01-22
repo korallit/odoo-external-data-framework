@@ -96,9 +96,9 @@
 			</page>
 			<page string="Test data">
 			    <separator string="data"/>
-			    <field name="test_data" style="font-family: monospace;" class="bg-dark text-light"/>
+			    <field name="test_data" widget="ace" options="{'mode': 'json'}"/>
 			    <separator string="metadata"/>
-			    <field name="test_metadata" style="font-family: monospace;" class="bg-dark text-light"/>
+			    <field name="test_metadata" widget="ace" options="{'mode': 'json'}"/>
 			</page>
 		    </notebook>
 		</sheet>
