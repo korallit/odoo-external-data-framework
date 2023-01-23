@@ -17,5 +17,9 @@ class CustomFunctions(functions.Functions):
     def _func_exclude_keys(self, o, excludes):
         return {k: v for k, v in o.items() if k not in excludes}
 
+    @functions.signature({'types': ['array']})
+    def _func_unique(self, a):
+        return list(set(a))
+
 
 options = jmespath.Options(custom_functions=CustomFunctions())
