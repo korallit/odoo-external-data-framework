@@ -164,6 +164,8 @@ class ExternalDataFieldMapping(models.Model):
     name_is_unique = fields.Boolean("Name is unique")
     link_object_to = fields.Char(
         help="The name of the value holding the record")
+    object_is_resource_unique = fields.Boolean(
+        "External object is unique to resources")
 
     @api.depends('filter_domain')
     def _count_records(self):

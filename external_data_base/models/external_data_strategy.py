@@ -362,6 +362,8 @@ class ExternalDataStrategy(models.Model):
         resource_id = metadata.get('resource_id')
         if not (foreign_id and resource_id):
             return False
+        if field_mapping.object_is_resource_unique:
+            foreign_id = f"res{resource_id}:foreign_id"
 
         object_vals = {
             'data_source_id': metadata['data_source_id'],

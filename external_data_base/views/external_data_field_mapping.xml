@@ -29,6 +29,7 @@
 			<field name="sequence"/>
 			<field name="name_is_unique"/>
 			<field name="link_object_to"/>
+			<field name="object_is_resource_unique"/>
 		    </group>
 		    <separator string="Field mapping"/>
 		    <field name="field_mapping_line_ids">
