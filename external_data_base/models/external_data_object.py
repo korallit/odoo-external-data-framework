@@ -83,8 +83,9 @@ class ExternalDataObject(models.Model):
         for record in self:
             record.name = record.foreign_id
 
-    def get_object_link(self, model_id, variant_tag=False, **metadata):
+    def get_object_link(self, variant_tag=False, **metadata):
         self.ensure_one()
+        model_id = metadata['model_id']
         object_link = self.object_link_ids.filtered(
             lambda r: r.model_id.id == model_id and
             r.variant_tag == variant_tag
@@ -109,7 +110,7 @@ class ExternalDataObject(models.Model):
         return object_link
 
     def _record(self, model_id, variant_tag=False):
-        return self.get_object_link(model_id, variant_tag)._record()
+        return self.get_object_link(variant_tag, model_id=model_id)._record()
 
     def link_object_to_record(
             self, record, model_model, model_id, variant_tag=False):
@@ -132,7 +133,7 @@ class ExternalDataObject(models.Model):
         model_id = metadata.get('model_id')
         model_model = metadata.get('model_model')
         variant_tag = metadata.get('obj_link_variant_tag', False)
-        object_link = self.get_object_link(model_id, variant_tag, **metadata)
+        object_link = self.get_object_link(variant_tag, **metadata)
         if object_link:
             self.sanitize_values(vals, prune_false=False, **metadata)
             record = object_link._record()

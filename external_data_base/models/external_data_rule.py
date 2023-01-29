@@ -391,7 +391,7 @@ class ExternalDataRule(models.Model):
             ('foreign_id', '=', value),
         ], limit=1)  # TODO: check if more than one found
         if ext_object:
-            object_link = ext_object.get_object_link(model_id)
+            object_link = ext_object.get_object_link(model_id=model_id)
             if object_link:
                 return object_link.record_id
         return False
