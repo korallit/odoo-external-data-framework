@@ -276,6 +276,7 @@ class ExternalDataStrategy(models.Model):
                         continue
                     metadata['obj_link_variant_tag'] = \
                         field_mapping.object_link_variant_tag
+                    metadata['link_object_to'] = field_mapping.link_object_to
                     metadata['foreign_id'] = foreign_id
                     if prune:
                         foreign_objects.append(

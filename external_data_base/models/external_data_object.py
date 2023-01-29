@@ -83,7 +83,7 @@ class ExternalDataObject(models.Model):
         for record in self:
             record.name = record.foreign_id
 
-    def get_object_link(self, model_id, variant_tag=False):
+    def get_object_link(self, model_id, variant_tag=False, **metadata):
         self.ensure_one()
         object_link = self.object_link_ids.filtered(
             lambda r: r.model_id.id == model_id and
@@ -91,7 +91,15 @@ class ExternalDataObject(models.Model):
         )
         msg_tail = f"external object ID {self.id}, model ID {model_id}"
         if not object_link:
-            _logger.warning(f"No object link found: {msg_tail}")
+            if metadata.get('link_object_to'):
+                self.link_object_to_record(
+                    record=metadata['link_object_to'],
+                    model_model=metadata.get('model_model'),
+                    model_id=metadata.get('model_id'),
+                    variant_tag=metadata.get('obj_link_variant_tag', False),
+                )
+            else:
+                _logger.warning(f"No object link found: {msg_tail}")
         elif len(object_link) > 1:
             _logger.warning(
                 "Multiple object link found, "
@@ -103,12 +111,28 @@ class ExternalDataObject(models.Model):
     def _record(self, model_id, variant_tag=False):
         return self.get_object_link(model_id, variant_tag)._record()
 
+    def link_object_to_record(
+            self, record, model_model, model_id, variant_tag=False):
+        # TODO: could delete link if record not exists
+        if not all([
+                isinstance(record, models.Model),
+                record._name == model_model,
+                record.exists(),
+        ]):
+            return False
+        self.object_link_ids = [Command.create({
+            'model_id': model_id,
+            'record_id': record.id,
+            'variant_tag': variant_tag,
+        })]
+        return True
+
     def write_odoo_record(self, vals, metadata):
         self.ensure_one()
         model_id = metadata.get('model_id')
         model_model = metadata.get('model_model')
         variant_tag = metadata.get('obj_link_variant_tag', False)
-        object_link = self.get_object_link(model_id, variant_tag)
+        object_link = self.get_object_link(model_id, variant_tag, **metadata)
         if object_link:
             self.sanitize_values(vals, prune_false=False, **metadata)
             record = object_link._record()
@@ -117,12 +141,8 @@ class ExternalDataObject(models.Model):
         elif model_id and model_model:
             if self.sanitize_values(vals, **metadata):
                 record = self.env[model_model].create(vals)
-                object_link = object_link.create({
-                    'model_id': model_id,
-                    'record_id': record.id,
-                    'variant_tag': variant_tag,
-                })
-                self.object_link_ids = [Command.link(object_link.id)]
+                self.link_object_to_record(
+                    record, model_model, model_id, variant_tag)
             else:
                 _logger.error(
                     "Provided values are not sufficient "

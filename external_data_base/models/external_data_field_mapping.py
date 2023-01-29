@@ -162,6 +162,8 @@ class ExternalDataFieldMapping(models.Model):
     test_data = fields.Text("Test data", default="{}")
     test_metadata = fields.Text("Test metadata", default="{}")
     name_is_unique = fields.Boolean("Name is unique")
+    link_object_to = fields.Char(
+        help="The name of the value holding the record")
 
     @api.depends('filter_domain')
     def _count_records(self):
