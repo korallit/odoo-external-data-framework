@@ -276,7 +276,6 @@ class ExternalDataStrategy(models.Model):
                         continue
                     metadata['obj_link_variant_tag'] = \
                         field_mapping.object_link_variant_tag
-                    metadata['link_object_to'] = field_mapping.link_object_to
                     metadata['foreign_id'] = foreign_id
                     if prune:
                         foreign_objects.append(
@@ -411,6 +410,9 @@ class ExternalDataStrategy(models.Model):
                     ext_object._record(metadata['model_id'], variant_tag)
         else:
             metadata['search_link_by_name'] = False
+
+        # get record to link from vals
+        metadata['link_object_to'] = vals.get(field_mapping.link_object_to)
 
         # return vals for deferred create
         if not record and metadata['deferred_create']:
