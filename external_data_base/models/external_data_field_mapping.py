@@ -163,7 +163,9 @@ class ExternalDataFieldMapping(models.Model):
     test_metadata = fields.Text("Test metadata", default="{}")
     name_is_unique = fields.Boolean("Name is unique")
     link_object_to = fields.Char(
-        help="The name of the value holding the record")
+        "Link object to",
+        help="The name of the value holding the record",
+    )
     object_is_resource_unique = fields.Boolean(
         "External object is unique to resources")
 
