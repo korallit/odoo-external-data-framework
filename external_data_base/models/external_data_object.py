@@ -93,7 +93,7 @@ class ExternalDataObject(models.Model):
         msg_tail = f"external object ID {self.id}, model ID {model_id}"
         if not object_link:
             if metadata.get('link_object_to'):
-                self.link_object_to_record(
+                return self.link_object_to_record(
                     record=metadata['link_object_to'],
                     model_model=metadata.get('model_model'),
                     model_id=metadata.get('model_id'),
@@ -121,12 +121,14 @@ class ExternalDataObject(models.Model):
                 record.exists(),
         ]):
             return False
-        self.object_link_ids = [Command.create({
+
+        object_link = self.object_link_ids.create({
             'model_id': model_id,
             'record_id': record.id,
             'variant_tag': variant_tag,
-        })]
-        return True
+        })
+        self.object_link_ids = [Command.link(object_link.id)]
+        return object_link
 
     def write_odoo_record(self, vals, metadata):
         self.ensure_one()
