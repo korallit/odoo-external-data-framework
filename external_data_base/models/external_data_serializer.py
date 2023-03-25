@@ -4,6 +4,7 @@ import gzip
 import json
 import jmespath
 import xlsxwriter
+import openpyxl
 from io import BufferedReader, BytesIO
 
 from odoo import api, fields, models
@@ -603,6 +604,20 @@ class ExternalDataParserLine(models.Model):
         else:
             return chunk
 
+    def _execute_xlsx(self, data):
+        if data is None:
+            return None
+        self.ensure_one()
+        if self.path_type == 'find' and self.extract_method == 'index':
+            index = int(self.extract_param) or 0  # TODO: check type
+            # TODO: chack data type
+            return data[index]
+        elif self.path_type == 'findall':
+            # TODO: conditional for direction (row/col)
+            return data.iter_rows(values_only=True, min_row=2)  # TODO: check is_header
+        else:
+            return None
+
     @api.model
     def prepare(self, data, engine):
         prep_method_name = '_prepare_' + engine
@@ -650,3 +665,16 @@ class ExternalDataParserLine(models.Model):
                 _logger.error(e)
                 return None
         return None
+
+    @api.model
+    def _prepare_xlsx(self, data):
+        if isinstance(data, (tuple, openpyxl.worksheet.worksheet.Worksheet)):
+            return data
+
+        if isinstance(data, bytes):
+            try:
+                data_io = BytesIO(data)
+                return openpyxl.load_workbook(data_io, readonly=True).active  # TODO: select workspace
+            except Exception as e:
+                _logger.error(e)
+                return None
