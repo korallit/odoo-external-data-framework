@@ -674,7 +674,7 @@ class ExternalDataParserLine(models.Model):
         if isinstance(data, bytes):
             try:
                 data_io = BytesIO(data)
-                return openpyxl.load_workbook(data_io, readonly=True).active  # TODO: select workspace
+                return openpyxl.load_workbook(data_io).active  # TODO: select workspace
             except Exception as e:
                 _logger.error(e)
                 return None
