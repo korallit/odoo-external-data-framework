@@ -386,16 +386,18 @@ class ExternalDataStrategy(models.Model):
             metadata['external_objects'] += ext_object
 
         # looking for record created by other data sources
-        if ext_object.link_similar_objects(**metadata):
+        if ext_object and ext_object.link_similar_objects(**metadata):
             record = metadata['record'] = \
                 ext_object._record(metadata['model_id'], variant_tag)
-        metadata['external_object_id'] = ext_object.id
+        if ext_object:
+            metadata['external_object_id'] = ext_object.id
 
         # pre processing
         metadata.update(pre_post='pre')
         vals = field_mapping.apply_mapping(data, metadata)
         preprocess_rules = field_mapping.rule_ids_pre
-        preprocess_rules += ext_object.rule_ids_pre
+        if ext_object:
+            preprocess_rules += ext_object.rule_ids_pre
         preprocess_rules.apply_rules(vals, metadata)
         if metadata.get('drop'):
             if record and metadata.get('delete'):
@@ -536,7 +538,7 @@ class ExternalDataStrategy(models.Model):
         record_ids = records.ids
         model_id = metadata['model_id']
         object_link = self.env['external.data.object.link']
-        obj_id, foreign_id = foreign_type_id = 0
+        obj_id = foreign_id = foreign_type_id = 0
         for i, o_vals in enumerate(object_vals):
             if (
                 o_vals['foreign_id'] != foreign_id or
